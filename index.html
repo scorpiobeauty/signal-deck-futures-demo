@@ -1955,6 +1955,14 @@
                 </select>
               </div>
               <div class="field">
+                <label for="tradeHorizon">Trade horizon</label>
+                <select id="tradeHorizon" data-save>
+                  <option>Intraday trade</option>
+                  <option>End-of-day review</option>
+                  <option>Next-day prep</option>
+                </select>
+              </div>
+              <div class="field">
                 <label for="holdPlan">Holding plan</label>
                 <select id="holdPlan" data-save>
                   <option>Intraday only</option>
@@ -2362,7 +2370,7 @@
 
   <script>
     const STORAGE_KEY = "signalDeckFutures.demo.v1";
-    const APP_BUILD_ID = "2026-05-31-share-demo-v1";
+    const APP_BUILD_ID = "2026-05-31-share-demo-wait-review-v1";
     const DEMO_MODE = true;
     const CONNECTOR_URL = "";
     const HEALTH_POLL_MS = 10000;
@@ -2446,7 +2454,7 @@
 
     function init() {
       [
-        "marketMode", "backupMode", "eventRisk", "holdPlan",
+        "marketMode", "backupMode", "eventRisk", "tradeHorizon", "holdPlan",
         "price", "dayHigh", "dayLow", "volumeTone", "onHigh", "onLow", "pdh", "pdl", "pdc",
         "vwap", "orHigh", "orLow", "gapNote", "majorRound", "sources", "qqqDirection",
         "megaCap", "semiTone", "yieldImpact", "volatility", "reviewTime", "backupBias",
@@ -2626,7 +2634,7 @@
           confidence: saved.confidence || "LOW",
           scores: saved.scores || {},
           executionContract: saved.executionContract || "MNQ",
-          logs: Array.isArray(saved.logs) ? saved.logs : []
+          logs: Array.isArray(saved.logs) ? saved.logs.filter(shouldKeepLog) : []
         };
         Object.entries(saved.fields || {}).forEach(([id, value]) => {
           const el = byId(id);
@@ -2740,6 +2748,23 @@
       return backup === "Off" ? "Off" : backup;
     }
 
+    function horizonMode() {
+      return textValue("tradeHorizon", "Intraday trade");
+    }
+
+    function isPrepMode() {
+      return horizonMode() !== "Intraday trade";
+    }
+
+    function displayAction() {
+      if (!isPrepMode() || deckState.action === "WAIT") return deckState.action;
+      return horizonMode() === "End-of-day review" ? `EOD ${deckState.action}` : `NEXT DAY ${deckState.action}`;
+    }
+
+    function signalUseLabel() {
+      return isPrepMode() ? "BIAS / PREP ONLY" : "PAPER TRADE";
+    }
+
     function executionContract() {
       const value = deckState.executionContract || contractSpec().micro;
       if (value === "MNQ/NQ") return "MNQ";
@@ -2761,7 +2786,7 @@
       const spec = contractSpec();
       byId("priceLabel").textContent = spec.priceLabel;
       byId("tradePlanSubcopy").textContent = `${spec.micro} dollars first, ${spec.full} dollars second.`;
-      byId("marketSubcopy").textContent = `Primary: ${spec.micro}/${spec.full}. Backup context: ${backupSpecName()}. Enter verified live values before generating a signal.`;
+      byId("marketSubcopy").textContent = `Primary: ${spec.micro}/${spec.full}. Backup context: ${backupSpecName()}. Horizon: ${horizonMode()}.`;
     }
 
     function stampScan() {
@@ -2798,6 +2823,17 @@
       return "WAIT";
     }
 
+    function isOpenedTradeLog(log) {
+      const action = String(log?.action || "");
+      const hasOpenedFlag = log && Object.prototype.hasOwnProperty.call(log, "opened");
+      return Boolean(log?.opened) || (!hasOpenedFlag && action !== "WAIT" && !action.includes("EOD") && !action.includes("NEXT DAY"));
+    }
+
+    function shouldKeepLog(log) {
+      const action = String(log?.action || "");
+      return isOpenedTradeLog(log) || action.includes("EOD") || action.includes("NEXT DAY");
+    }
+
     function runConsoleScan() {
       stampScan();
       const hasHardStop = sessionLabel() === "Closed" || textValue("eventRisk", "Clear") !== "Clear";
@@ -2805,6 +2841,9 @@
       if (hasHardStop || !dataReady) {
         deckState.action = "WAIT";
         deckState.confidence = "LOW";
+      } else if (isPrepMode()) {
+        deckState.action = scoreBias();
+        deckState.confidence = deckState.action === "WAIT" ? "LOW" : "MEDIUM";
       } else if (deckState.action === "WAIT") {
         deckState.action = scoreBias();
         deckState.confidence = deckState.action === "WAIT" ? "LOW" : "MEDIUM";
@@ -2817,23 +2856,33 @@
     function logPaperTrade() {
       const spec = contractSpec();
       const math = riskMath();
+      const prepMode = isPrepMode();
+      if (!prepMode && deckState.action === "WAIT") {
+        els.lastTradeResult.value = "WAIT review stamped, no paper trade opened";
+        stampScan();
+        byId("journalWrap").dataset.open = "true";
+        return;
+      }
       const entry = numberValue("entry");
       const stop = numberValue("stop");
       const target = numberValue("target2") ?? numberValue("target1");
       const risk = math.valid ? Math.abs(entry - stop) * executionPointValue() : 0;
       const row = {
         time: new Date().toLocaleString("en-US", { timeZone: "America/New_York" }) + " ET",
-        action: deckState.action,
+        action: displayAction(),
         contract: executionContract(),
         primary: `${spec.micro}/${spec.full}`,
         entry: fmt(entry),
         stop: fmt(stop),
         target: fmt(target),
-        risk: money(risk)
+        risk: prepMode ? "review only" : money(risk),
+        opened: !prepMode && deckState.action !== "WAIT"
       };
       deckState.logs.unshift(row);
       deckState.logs = deckState.logs.slice(0, 12);
-      if (deckState.action !== "WAIT") {
+      if (prepMode) {
+        els.lastTradeResult.value = `${horizonMode()} logged, no paper trade opened`;
+      } else if (deckState.action !== "WAIT") {
         els.lastTradeResult.value = `${row.action} ${row.contract} paper trade logged, risk ${row.risk}`;
       } else {
         els.lastTradeResult.value = "WAIT logged, no paper trade opened";
@@ -2857,17 +2906,18 @@
       byId("consoleBalance").textContent = money(balance || start);
       byId("consoleProgress").textContent = `${progress >= 0 ? "+" : ""}${progress.toFixed(2)}%`;
       byId("consolePnl").textContent = `${pnl >= 0 ? "+" : "-"}${money(Math.abs(pnl))}`;
-      byId("consoleClosed").textContent = `${deckState.logs.length} closed`;
+      byId("consoleClosed").textContent = `${deckState.logs.filter(isOpenedTradeLog).length} closed`;
       byId("consoleWinRate").textContent = "0%";
       byId("consoleRecord").textContent = "0W / 0L";
-      byId("consoleOpen").textContent = deckState.logs.filter(log => log.action !== "WAIT").length;
+      byId("consoleOpen").textContent = deckState.logs.filter(isOpenedTradeLog).length;
       byId("portfolioCount").textContent = `(${deckState.logs.length})`;
       byId("consoleUpdated").textContent = `Last updated: ${now}`;
-      byId("consoleAction").textContent = deckState.action;
+      byId("consoleAction").textContent = displayAction();
       byId("consoleConfidence").textContent = `Confidence: ${deckState.confidence}`;
-      byId("consoleEntry").textContent = deckState.action === "WAIT" ? "-" : fmt(numberValue("entry"));
-      byId("consoleStop").textContent = deckState.action === "WAIT" ? "-" : fmt(numberValue("stop"));
-      byId("consoleTarget").textContent = deckState.action === "WAIT" ? "-" : fmt(numberValue("target2") ?? numberValue("target1"));
+      byId("consoleEntry").textContent = deckState.action === "WAIT" || isPrepMode() ? "-" : fmt(numberValue("entry"));
+      byId("consoleStop").textContent = deckState.action === "WAIT" || isPrepMode() ? "-" : fmt(numberValue("stop"));
+      byId("consoleTarget").textContent = deckState.action === "WAIT" || isPrepMode() ? "-" : fmt(numberValue("target2") ?? numberValue("target1"));
+      byId("logTradeButton").textContent = isPrepMode() ? "+ Log EOD Review" : deckState.action === "WAIT" ? "+ Stamp WAIT Review" : "+ Log Paper Trade";
 
       signalCard.className = "signal-card";
       if (deckState.action === "LONG") signalCard.classList.add("long");
@@ -2917,15 +2967,20 @@
       lines.push("Got everything I have. Here is your full signal, built from the deck inputs:");
       lines.push("---");
       lines.push("");
-      lines.push(`${spec.title} - PAPER TRADE`);
+      lines.push(`${spec.title} - ${signalUseLabel()}`);
       lines.push(textValue("reviewTime", "-"));
       lines.push("");
-      lines.push(`ACTION: ${deckState.action}`);
+      lines.push(`ACTION: ${displayAction()}`);
+      lines.push(`HORIZON: ${horizonMode()}`);
       lines.push(`CONTRACT: ${executionContract()} (${money(executionPointValue())}/pt)`);
       lines.push(`PRIMARY: ${spec.micro}/${spec.full} | BACKUP: ${backupSpecName()}`);
       lines.push(`SESSION: ${sessionLabel()} | EVENT RISK: ${textValue("eventRisk", "Clear")}`);
       lines.push("");
-      if (deckState.action === "WAIT") {
+      if (isPrepMode()) {
+        lines.push("NO LIVE ENTRY:");
+        lines.push("- This is an end-of-day / next-day bias read only.");
+        lines.push("- Confirm after the next active session opens before any paper entry.");
+      } else if (deckState.action === "WAIT") {
         lines.push("NO ENTRY RECOMMENDED:");
         lines.push("- Market/data/setup has not earned a trade yet.");
         lines.push("- Rerun the scan on the saved recheck cadence.");
@@ -3302,6 +3357,11 @@
       const maxRisk = Math.max(0, numberValue("maxRiskDollars") || 0);
       guardrail.className = "guardrail";
 
+      if (isPrepMode()) {
+        guardrail.textContent = `${horizonMode()} mode: use this as bias and level prep only. For Topstep, confirm after the next active session opens before any paper entry.`;
+        return;
+      }
+
       const warnings = [];
       if (!hasSources) warnings.push("source URLs are missing");
       if (deckState.action !== "WAIT" && currentSession === "Closed") warnings.push("market is closed");
@@ -3594,6 +3654,7 @@
       const action = deckState.action;
       const spec = contractSpec();
       const waitMode = action === "WAIT";
+      const prepMode = isPrepMode();
       const price = numberValue("price");
       const entry = numberValue("entry");
       const stop = numberValue("stop");
@@ -3605,17 +3666,19 @@
       const activeRisk = math.valid
         ? `${points(math.riskPts)} pts | ${spec.micro} -${money(math.microRisk)}`
         : "Risk not calculated";
-      const targetText = waitMode
+      const targetText = waitMode || prepMode
         ? "No active risk"
         : `${fmt(target1)} / ${fmt(target2)} | ${activeRisk}`;
-      const entryStopText = waitMode
+      const entryStopText = waitMode || prepMode
         ? "No active entry"
         : `${fmt(entry)} / ${fmt(stop)}`;
-      const note = waitMode
+      const note = prepMode
+        ? shortText(textValue("reasoning"), `${horizonMode()} mode: build bias and levels only. Confirm next session before any paper entry.`, 170)
+        : waitMode
         ? shortText(textValue("reasoning"), "No entry recommended yet. Keep watching for a cleaner setup.", 170)
         : shortText(textValue("reasoning"), "Directional signal entered. Confirm the plan, source data, and risk rules before logging a paper trade.", 170);
 
-      setText("briefAction", action);
+      setText("briefAction", displayAction());
       setText("briefConfidence", `${deckState.confidence} confidence`);
       setText("briefMarket", `${spec.micro}/${spec.full} primary`);
       setText("briefPrice", fmt(price));
@@ -3624,7 +3687,7 @@
       setText("briefContext", `${backupSpecName()} - ${textValue("eventRisk", "Clear")}`);
       setText("briefNextCheck", textValue("nextCheck", textValue("reviewTime", "-")));
       setText("briefNote", note);
-      setText("briefSubtitle", `${sessionLabel()} - ${textValue("holdPlan", "Intraday only")}`);
+      setText("briefSubtitle", `${sessionLabel()} - ${horizonMode()} - ${textValue("holdPlan", "Intraday only")}`);
     }
 
     function buildSignal() {
@@ -3645,7 +3708,8 @@
       output.push("============================================================");
       output.push(spec.title);
       output.push("============================================================");
-      output.push(`ACTION: ${action}`);
+      output.push(`ACTION: ${displayAction()}`);
+      output.push(`HORIZON: ${horizonMode()}`);
       output.push(`${spec.micro} PRICE: ${fmt(price)}`);
       output.push(`PRIMARY MARKET: ${textValue("marketMode", "MNQ/NQ")}`);
       output.push(`BACKUP MARKET: ${backupSpecName()}`);
@@ -3665,7 +3729,12 @@
       output.push(`  Next Check:      ${textValue("nextCheck", "-")}`);
       output.push("");
       output.push("ENTRY PLAN");
-      if (waitMode) {
+      if (isPrepMode()) {
+        output.push("  Entry:    No live entry. Bias/prep only.");
+        output.push(`  Watch:    ${fmt(numberValue("entry"))} / stop idea ${fmt(numberValue("stop"))}`);
+        output.push(`  Targets:  ${fmt(numberValue("target1"))} / ${fmt(numberValue("target2"))}`);
+        output.push("  Risk/Reward: Review after next session confirms.");
+      } else if (waitMode) {
         output.push("  Entry:    No entry recommended.");
         output.push("  Stop:     Not active.");
         output.push("  Target 1: Not active.");
@@ -3724,6 +3793,7 @@
       output.push("  - Max trades per day: 3. If there is no clean setup, WAIT.");
       output.push("  - If 2 consecutive losers or one challenge failure happens: stop trading for the session.");
       output.push("  - Never widen a stop after entry.");
+      output.push("  - End-of-day and next-day prep are bias reads only, not permission to hold a Topstep position into the next session.");
       output.push("  - Do not hold through CPI, FOMC, NFP, major Fed speakers, or mega-cap earnings that can gap futures sharply.");
       output.push("");
       output.push("NEWS IMPACT");
