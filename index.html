@@ -1,0 +1,3799 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Signal Deck Futures Demo - MNQ/NQ + ES/MES</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07070d;
+      --panel: #111019;
+      --panel-2: #171220;
+      --ink: #f9f4fb;
+      --muted: #bcaac7;
+      --line: #34243c;
+      --line-strong: #5d3b59;
+      --green: #35d07f;
+      --green-soft: #0b2b1e;
+      --red: #ff5c78;
+      --red-soft: #31121c;
+      --amber: #ffd166;
+      --amber-soft: #1b1820;
+      --cyan: #28d7d9;
+      --cyan-soft: #12393f;
+      --violet: #ff6fb5;
+      --violet-soft: #321629;
+      --shadow: 0 22px 60px rgba(0, 0, 0, .34);
+      --radius: 8px;
+      --font: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(180deg, #07070d 0%, #120b18 48%, #061315 100%);
+      color: var(--ink);
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app-shell {
+      min-height: 100vh;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid var(--line);
+      background: rgba(5, 8, 13, .94);
+      backdrop-filter: blur(14px);
+    }
+
+    .topbar-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 14px 22px;
+      display: grid;
+      grid-template-columns: minmax(240px, 1fr) auto auto;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .brand {
+      min-width: 0;
+    }
+
+    .brand-title {
+      margin: 0;
+      font-size: clamp(20px, 2.2vw, 30px);
+      line-height: 1.05;
+      letter-spacing: 0;
+      font-weight: 850;
+      color: var(--cyan);
+      text-shadow: 0 0 18px rgba(22, 199, 223, .24);
+      text-transform: uppercase;
+    }
+
+    .brand-subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .status-strip {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      padding: 7px 11px;
+      display: inline-flex;
+      gap: 7px;
+      align-items: center;
+      color: var(--ink);
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .pill.warning {
+      background: var(--amber-soft);
+      color: var(--amber);
+      border-color: #f1c86c;
+    }
+
+    .pill.good {
+      background: var(--green-soft);
+      color: var(--green);
+      border-color: #a8ddb9;
+    }
+
+    .pill.danger {
+      background: var(--red-soft);
+      color: var(--red);
+      border-color: #f1b8af;
+    }
+
+    .icon-button,
+    .text-button {
+      min-height: 38px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: var(--panel);
+      color: var(--ink);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 11px;
+      font-weight: 760;
+      transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease, background .12s ease;
+    }
+
+    .icon-button {
+      width: 38px;
+      padding: 0;
+    }
+
+    .text-button.primary {
+      background: linear-gradient(180deg, #18c8e0, #0a8ea4);
+      color: #eaffff;
+      border-color: #24d5ec;
+    }
+
+    .text-button:hover,
+    .icon-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(21, 25, 27, .10);
+    }
+
+    .layout {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 22px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 390px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .main-stack,
+    .side-stack {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .decision-stack {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr);
+      gap: 18px;
+      align-items: start;
+      min-width: 0;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: clip;
+    }
+
+    .output-panel {
+      order: 1;
+    }
+
+    .trade-plan-panel {
+      order: 2;
+    }
+
+    .risk-panel {
+      order: 3;
+    }
+
+    .challenge-panel {
+      order: 4;
+    }
+
+    .panel-header {
+      min-height: 58px;
+      border-bottom: 1px solid var(--line);
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .panel-actions {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.2;
+      font-weight: 850;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .panel-subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .panel-body {
+      padding: 16px;
+    }
+
+    .dense-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      gap: 12px;
+    }
+
+    .two-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      min-width: 0;
+    }
+
+    .field label {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      margin: 0 0 5px;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: #0a111d;
+      color: var(--ink);
+      padding: 8px 10px;
+      outline: none;
+    }
+
+    .field textarea {
+      min-height: 84px;
+      resize: vertical;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 3px var(--cyan-soft);
+    }
+
+    .source-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: end;
+      margin-top: 12px;
+    }
+
+    .quick-links {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .quick-link {
+      min-height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--ink);
+      background: var(--panel-2);
+      padding: 6px 10px;
+      text-decoration: none;
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .quick-drawer {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel-2);
+      overflow: hidden;
+      margin-top: 12px;
+    }
+
+    .quick-drawer summary {
+      min-height: 42px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 900;
+      list-style: none;
+      cursor: pointer;
+    }
+
+    .quick-drawer summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .quick-drawer summary span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .quick-drawer[open] summary {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .quick-drawer .drawer-chevron {
+      flex: 0 0 auto;
+      transition: transform .18s ease;
+    }
+
+    .quick-drawer[open] .drawer-chevron {
+      transform: rotate(180deg);
+    }
+
+    .connection-summary {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .connection-summary[data-tone="good"] {
+      color: var(--green);
+    }
+
+    .connection-summary[data-tone="warn"] {
+      color: var(--amber);
+    }
+
+    .connection-summary[data-tone="danger"] {
+      color: var(--red);
+    }
+
+    .quick-drawer-body {
+      padding: 12px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .quick-drawer:not([open]) .quick-drawer-body {
+      display: none;
+    }
+
+    .quick-drawer-body .connector-grid,
+    .quick-drawer-body .source-row,
+    .quick-drawer-body .quick-links {
+      margin-top: 0;
+    }
+
+    .step-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .step {
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--amber);
+      border-radius: var(--radius);
+      background: #0a111d;
+      display: grid;
+      overflow: hidden;
+    }
+
+    .step-head {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 12px;
+    }
+
+    .step-number {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #25182d;
+      color: #fff9fd;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 850;
+      font-size: 12px;
+    }
+
+    .step-title-wrap {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+
+    .step-title {
+      min-width: 0;
+      font-weight: 850;
+    }
+
+    .step-summary {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .score-control {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      min-width: 242px;
+    }
+
+    .step-toggle {
+      width: 36px;
+      height: 36px;
+    }
+
+    .step-toggle svg {
+      transition: transform .18s ease;
+    }
+
+    .step[data-open="true"] .step-toggle svg {
+      transform: rotate(180deg);
+    }
+
+    .step-body {
+      display: none;
+      border-top: 1px solid var(--line);
+      padding: 0 12px 12px;
+    }
+
+    .step[data-open="true"] .step-body {
+      display: block;
+    }
+
+    .step[data-score="PASS"],
+    .step[data-score="BULLISH"] {
+      border-left-color: var(--green);
+    }
+
+    .step[data-score="FAIL"],
+    .step[data-score="BEARISH"] {
+      border-left-color: var(--red);
+    }
+
+    .step[data-score="NEUTRAL"] {
+      border-left-color: var(--amber);
+    }
+
+    .seg {
+      min-height: 32px;
+      border: 1px solid var(--line-strong);
+      background: #0a111d;
+      color: var(--muted);
+      border-radius: var(--radius);
+      padding: 5px 8px;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .seg[data-active="true"][data-value="PASS"],
+    .seg[data-active="true"][data-value="BULLISH"],
+    .seg[data-active="true"][data-value="LONG"] {
+      color: var(--green);
+      background: var(--green-soft);
+      border-color: #246c47;
+    }
+
+    .seg[data-active="true"][data-value="FAIL"],
+    .seg[data-active="true"][data-value="BEARISH"],
+    .seg[data-active="true"][data-value="SHORT"] {
+      color: var(--red);
+      background: var(--red-soft);
+      border-color: #7d2b3c;
+    }
+
+    .seg[data-active="true"][data-value="NEUTRAL"],
+    .seg[data-active="true"][data-value="WAIT"] {
+      color: var(--amber);
+      background: var(--amber-soft);
+      border-color: #6f5a2d;
+    }
+
+    .action-control {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .confidence-control {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .market-visual {
+      border-top: 1px solid var(--line);
+      background: linear-gradient(180deg, #0d1522, #0a111d);
+      padding: 12px 16px 16px;
+    }
+
+    .market-hours-strip {
+      display: grid;
+      grid-template-columns: 1.25fr 1fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    .hours-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #0a111d;
+      padding: 11px 12px;
+      min-width: 0;
+      border-left: 5px solid var(--amber);
+    }
+
+    .hours-card.good {
+      border-left-color: var(--green);
+    }
+
+    .hours-card.danger {
+      border-left-color: var(--red);
+    }
+
+    .hours-card.neutral {
+      border-left-color: var(--line-strong);
+    }
+
+    .hours-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .hours-value {
+      margin-top: 5px;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 950;
+      overflow-wrap: anywhere;
+    }
+
+    .hours-sub {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .chart-wrap {
+      height: 150px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #09111d;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .metrics[data-mode="empty"] {
+      display: none;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #0a111d;
+      padding: 10px;
+      min-height: 70px;
+      min-width: 0;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .metric-value {
+      margin-top: 4px;
+      font-size: 17px;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .metric.good .metric-value {
+      color: var(--green);
+    }
+
+    .metric.danger .metric-value {
+      color: var(--red);
+    }
+
+    .metric.warning .metric-value {
+      color: var(--amber);
+    }
+
+    .challenge-band {
+      display: grid;
+      gap: 10px;
+    }
+
+    .progress-track {
+      height: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+    }
+
+    .progress-fill {
+      display: block;
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--cyan), var(--green));
+      transition: width .18s ease;
+    }
+
+    .challenge-status {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .output-body {
+      display: grid;
+      gap: 12px;
+    }
+
+    .brief-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .brief-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel-2);
+      padding: 12px;
+      min-width: 0;
+    }
+
+    .brief-card.action {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      border-left: 5px solid var(--amber);
+    }
+
+    .brief-card.action.long {
+      border-left-color: var(--green);
+      background: #071b12;
+    }
+
+    .brief-card.action.short {
+      border-left-color: var(--red);
+      background: #211016;
+    }
+
+    .brief-card.action.wait {
+      border-left-color: var(--amber);
+      background: #111019;
+    }
+
+    .brief-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 950;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .brief-value {
+      margin-top: 5px;
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .brief-action-value {
+      margin-top: 4px;
+      font-family: var(--mono);
+      font-size: 34px;
+      line-height: 1;
+      font-weight: 950;
+      letter-spacing: 0;
+    }
+
+    .brief-card.action.long .brief-action-value {
+      color: var(--green);
+    }
+
+    .brief-card.action.short .brief-action-value {
+      color: var(--red);
+    }
+
+    .brief-card.action.wait .brief-action-value {
+      color: var(--amber);
+    }
+
+    .brief-chip {
+      justify-self: end;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .brief-note {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel-2);
+      color: var(--ink);
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .raw-signal {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--panel-2);
+    }
+
+    .raw-signal summary {
+      min-height: 42px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--ink);
+      font-weight: 850;
+      list-style: none;
+      cursor: pointer;
+    }
+
+    .raw-signal summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .raw-signal summary span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .raw-signal[open] summary {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .raw-signal[open] .raw-chevron {
+      transform: rotate(180deg);
+    }
+
+    .raw-chevron {
+      transition: transform .18s ease;
+      flex: 0 0 auto;
+    }
+
+    .signal-output {
+      width: 100%;
+      min-height: 220px;
+      max-height: 420px;
+      border: 0;
+      border-radius: 0;
+      padding: 16px;
+      resize: vertical;
+      background: #101415;
+      color: #e9f0ef;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.55;
+      outline: none;
+    }
+
+    .risk-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .checkline {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 9px;
+      align-items: start;
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .checkline input {
+      margin-top: 2px;
+      accent-color: var(--green);
+    }
+
+    .guardrail {
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--amber);
+      border-radius: var(--radius);
+      padding: 11px;
+      background: var(--amber-soft);
+      color: var(--amber);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .guardrail.good {
+      border-left-color: var(--green);
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .guardrail.danger {
+      border-left-color: var(--red);
+      background: var(--red-soft);
+      color: var(--red);
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 0 22px 22px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    .compact-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .inline-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .scanner-console {
+      grid-column: 1 / -1;
+      background: #080d15;
+      border: 1px solid #1f2d40;
+      border-radius: var(--radius);
+      box-shadow: 0 22px 70px rgba(0, 0, 0, .42);
+      overflow: hidden;
+    }
+
+    .scanner-head {
+      padding: 24px 24px 18px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .console-title {
+      margin: 0;
+      color: var(--cyan);
+      font-size: clamp(22px, 3vw, 34px);
+      font-weight: 950;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      text-shadow: 0 0 18px rgba(22, 199, 223, .45);
+    }
+
+    .console-subtitle {
+      margin: 4px 0 0;
+      color: #506078;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 1px;
+      font-weight: 850;
+    }
+
+    .scanner-status {
+      display: grid;
+      gap: 4px;
+      justify-items: end;
+      color: var(--green);
+      font-weight: 900;
+      text-transform: uppercase;
+      font-size: 13px;
+    }
+
+    .scanner-status span:last-child {
+      color: #526179;
+      font-size: 11px;
+    }
+
+    .console-tabs {
+      display: flex;
+      gap: 22px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .console-tab {
+      padding: 16px 0 13px;
+      color: #63718a;
+      border-bottom: 3px solid transparent;
+      text-transform: uppercase;
+      font-weight: 900;
+      letter-spacing: 1px;
+      font-size: 13px;
+    }
+
+    .console-tab.active {
+      color: var(--cyan);
+      border-color: var(--cyan);
+    }
+
+    .console-body {
+      padding: 20px 24px 24px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card {
+      min-height: 84px;
+      background: #0d1725;
+      border: 1px solid #1c2a3d;
+      border-radius: var(--radius);
+      padding: 13px 15px;
+    }
+
+    .stat-label {
+      color: #66748c;
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 900;
+      letter-spacing: .8px;
+    }
+
+    .stat-value {
+      margin-top: 7px;
+      color: var(--green);
+      font-size: 23px;
+      font-weight: 950;
+    }
+
+    .stat-sub {
+      color: #526179;
+      font-size: 12px;
+      margin-top: 2px;
+      font-weight: 800;
+    }
+
+    .contract-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: #697791;
+      font-weight: 900;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+
+    .contract-button {
+      min-width: 130px;
+      border: 1px solid #24344c;
+      background: #09111d;
+      color: #7d879a;
+      border-radius: var(--radius);
+      min-height: 42px;
+      padding: 9px 14px;
+      font-weight: 950;
+    }
+
+    .contract-button[data-active="true"] {
+      color: var(--cyan);
+      border-color: var(--cyan);
+      box-shadow: inset 0 0 0 1px rgba(22, 199, 223, .34), 0 0 18px rgba(22, 199, 223, .18);
+      background: #0b1d28;
+    }
+
+    .scan-query {
+      display: grid;
+      grid-template-columns: 1fr 160px;
+      gap: 12px;
+    }
+
+    .scan-query input {
+      min-height: 68px;
+      border: 1px solid #23344d;
+      border-radius: var(--radius);
+      background: #0e1725;
+      color: var(--ink);
+      padding: 0 20px;
+      font-size: clamp(17px, 2vw, 24px);
+      font-weight: 900;
+    }
+
+    .scan-query button,
+    .get-signal-button {
+      border: 1px solid #22d2eb;
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, #18c8df, #07869c);
+      color: #eaffff;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      box-shadow: 0 0 22px rgba(22, 199, 223, .25);
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .filter-chip {
+      min-height: 42px;
+      border-radius: var(--radius);
+      border: 1px solid #1f2d40;
+      background: #151e2e;
+      color: #7f8aa0;
+      padding: 9px 16px;
+      font-weight: 850;
+    }
+
+    .get-signal-button {
+      min-height: 76px;
+      font-size: 19px;
+    }
+
+    .updated-line {
+      text-align: center;
+      color: #4f5d72;
+      font-size: 12px;
+      font-weight: 850;
+      margin-top: -8px;
+    }
+
+    .signal-card {
+      border: 1px solid var(--amber);
+      background: #130f14;
+      border-radius: var(--radius);
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .signal-card.long {
+      border-color: var(--green);
+      background: #071a14;
+    }
+
+    .signal-card.short {
+      border-color: var(--red);
+      background: #1a0b12;
+    }
+
+    .signal-top {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .signal-label {
+      color: #526179;
+      text-transform: uppercase;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 1px;
+    }
+
+    .signal-action {
+      margin-top: 4px;
+      color: var(--amber);
+      font-size: clamp(32px, 5vw, 48px);
+      line-height: 1;
+      font-weight: 950;
+      text-transform: uppercase;
+    }
+
+    .signal-card.long .signal-action {
+      color: var(--green);
+    }
+
+    .signal-card.short .signal-action {
+      color: var(--red);
+    }
+
+    .signal-meta {
+      margin-top: 8px;
+      color: #76849a;
+      font-weight: 850;
+    }
+
+    .signal-levels {
+      text-align: right;
+      color: #d6deea;
+      font-weight: 950;
+      line-height: 1.55;
+    }
+
+    .signal-levels span {
+      color: var(--cyan);
+    }
+
+    .log-button {
+      min-height: 54px;
+      border: 1px solid #37ca77;
+      border-radius: var(--radius);
+      background: #0d672f;
+      color: #b9ffd2;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: .7px;
+    }
+
+    .console-output {
+      max-height: 520px;
+      overflow: auto;
+      background: #0c1421;
+      border: 1px solid #1f2d40;
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      color: #dce6f4;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .console-output .muted {
+      color: #647188;
+    }
+
+    .journal-toggle {
+      min-height: 42px;
+      border: 1px solid #5d3b59;
+      border-radius: var(--radius);
+      background: #14111d;
+      color: #f9f4fb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 12px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+
+    .journal-toggle span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .journal-wrap[data-open="false"] .console-output {
+      display: none;
+    }
+
+    .journal-wrap[data-open="false"] .journal-toggle i:last-child {
+      transform: rotate(-90deg);
+    }
+
+    .logged-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .logged-trade {
+      border: 1px solid #1f2d40;
+      border-radius: var(--radius);
+      background: #0b1320;
+      padding: 10px 12px;
+      color: #9aa7bc;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    /* Dark glam console theme */
+    .topbar {
+      background: rgba(7, 7, 13, .94);
+      border-bottom-color: #34243c;
+    }
+
+    .brand-title {
+      color: #ff7fc1;
+      text-shadow: 0 0 18px rgba(255, 111, 181, .30);
+    }
+
+    .console-title {
+      color: #28d7d9;
+      text-shadow: 0 0 18px rgba(40, 215, 217, .34);
+    }
+
+    .scanner-console {
+      background: #0c0d15;
+      border-color: #2d2638;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, .46);
+    }
+
+    .scanner-head,
+    .console-tabs,
+    .panel-header {
+      border-color: #34243c;
+    }
+
+    .console-subtitle,
+    .stat-label,
+    .stat-sub,
+    .updated-line,
+    .signal-label {
+      color: #b9a6c5;
+    }
+
+    .scanner-status {
+      color: var(--green);
+    }
+
+    .scanner-status span:last-child {
+      color: #9ecfd0;
+    }
+
+    .console-tab {
+      color: #a996b7;
+    }
+
+    .console-tab.active {
+      color: #28d7d9;
+      border-color: #28d7d9;
+    }
+
+    .stat-card,
+    .hours-card,
+    .panel,
+    .metric,
+    .step,
+    .chart-wrap {
+      background: #111019;
+      border-color: #34243c;
+    }
+
+    .step-head,
+    .step-body {
+      border-color: #34243c;
+    }
+
+    .step-summary {
+      color: #a996b7;
+    }
+
+    .stat-value {
+      color: var(--green);
+    }
+
+    .hours-card {
+      background: #15111e;
+    }
+
+    .hours-label,
+    .hours-sub {
+      color: #a996b7;
+    }
+
+    .hours-value {
+      color: #f9f4fb;
+    }
+
+    .contract-row {
+      color: #c2b0cc;
+    }
+
+    .contract-button,
+    .filter-chip {
+      background: #171220;
+      color: #d7c8df;
+      border-color: #3a2a43;
+    }
+
+    .contract-button[data-active="true"] {
+      background: #092528;
+      color: #8ff8f4;
+      border-color: #28d7d9;
+      box-shadow: inset 0 0 0 1px rgba(40, 215, 217, .30), 0 0 22px rgba(40, 215, 217, .18);
+    }
+
+    .scan-query input,
+    .field input,
+    .field select,
+    .field textarea,
+    .seg {
+      background: #0c0b13;
+      color: #f9f4fb;
+      border-color: #5d3b59;
+    }
+
+    .scan-query input::placeholder,
+    .field input::placeholder,
+    .field textarea::placeholder {
+      color: #8f789b;
+    }
+
+    .scan-query button,
+    .get-signal-button,
+    .text-button.primary {
+      background: linear-gradient(180deg, #ff8fc9, #d94f9e);
+      border-color: #ff7fc1;
+      color: #fff9fd;
+      box-shadow: 0 14px 34px rgba(255, 111, 181, .26);
+    }
+
+    .signal-card {
+      background: #111019;
+      border-color: var(--amber);
+    }
+
+    .signal-card.long {
+      background: #081a12;
+      border-color: var(--green);
+    }
+
+    .signal-card.short {
+      background: #1b0a12;
+      border-color: var(--red);
+    }
+
+    .signal-levels {
+      color: #f9f4fb;
+    }
+
+    .signal-levels span {
+      color: #28d7d9;
+    }
+
+    .signal-meta {
+      color: #c9b8d2;
+    }
+
+    .log-button {
+      background: #168044;
+      border-color: #35d07f;
+      color: #f0fff6;
+    }
+
+    .console-output,
+    .signal-output {
+      background: #0c0b13;
+      color: #f9f4fb;
+      border-color: #34243c;
+    }
+
+    .brief-card,
+    .brief-note,
+    .raw-signal {
+      background: #14111d;
+      border-color: #34243c;
+    }
+
+    .brief-card.action.long {
+      background: #081a12;
+    }
+
+    .brief-card.action.short {
+      background: #1b0a12;
+    }
+
+    .brief-card.action.wait {
+      background: #111019;
+    }
+
+    .brief-label,
+    .brief-chip {
+      color: #b9a6c5;
+    }
+
+    .brief-value,
+    .brief-note,
+    .raw-signal summary,
+    .quick-drawer summary {
+      color: #f9f4fb;
+    }
+
+    .quick-drawer {
+      background: #14111d;
+      border-color: #34243c;
+    }
+
+    .quick-drawer[open] summary {
+      border-color: #34243c;
+    }
+
+    .logged-trade {
+      background: #171220;
+      border-color: #34243c;
+      color: #cbbbd4;
+    }
+
+    .live-panel {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .live-tile {
+      border: 1px solid #34243c;
+      background: #0c0b13;
+      border-radius: var(--radius);
+      padding: 11px 12px;
+      min-width: 0;
+    }
+
+    .live-label {
+      color: #b9a6c5;
+      font-size: 11px;
+      font-weight: 950;
+      text-transform: uppercase;
+    }
+
+    .live-value {
+      margin-top: 5px;
+      color: #f9f4fb;
+      font-weight: 950;
+      overflow-wrap: anywhere;
+    }
+
+    .live-value.good {
+      color: var(--green);
+    }
+
+    .live-value.warn {
+      color: var(--amber);
+    }
+
+    .live-value.danger {
+      color: var(--red);
+    }
+
+    .connector-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .alert-helper {
+      border: 1px solid #34243c;
+      border-radius: var(--radius);
+      background: #0c0b13;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .alert-helper textarea {
+      width: 100%;
+      min-height: 138px;
+      border: 1px solid #5d3b59;
+      border-radius: var(--radius);
+      background: #090811;
+      color: #f9f4fb;
+      padding: 10px;
+      resize: vertical;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    body[data-share-mode="demo"] .connector-grid,
+    body[data-share-mode="demo"] .alert-helper {
+      display: none;
+    }
+
+    body[data-share-mode="demo"] .setup-drawer .quick-drawer-body::after {
+      content: "Shared demo mode: live webhook and Topstep details are hidden.";
+      border: 1px solid #34243c;
+      border-radius: var(--radius);
+      background: #0c0b13;
+      color: #b9a6c5;
+      padding: 12px;
+      font-weight: 800;
+    }
+
+    .secret-input {
+      -webkit-text-security: disc;
+    }
+
+    .market-visual {
+      background: linear-gradient(180deg, #0c0b13, #0b1516);
+    }
+
+    .pill {
+      background: #14111d;
+      border-color: #34243c;
+      color: #f9f4fb;
+    }
+
+    .pill.good {
+      background: #0b2b1e;
+      color: var(--green);
+      border-color: #246c47;
+    }
+
+    .pill.warning {
+      background: var(--amber-soft);
+      color: var(--amber);
+      border-color: #6f5a2d;
+    }
+
+    .pill.danger {
+      background: #31121c;
+      color: var(--red);
+      border-color: #7d2b3c;
+    }
+
+    .quick-link {
+      background: #171220;
+      border-color: #34243c;
+      color: #d7c8df;
+    }
+
+    @media (max-width: 1180px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .decision-stack {
+        grid-template-columns: 1fr;
+      }
+
+      .side-stack {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .signal-output {
+        min-height: 220px;
+      }
+
+      .stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 780px) {
+      .topbar-inner {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+      }
+
+      .top-actions,
+      .status-strip {
+        justify-content: flex-start;
+      }
+
+      .connection-summary {
+        display: none !important;
+      }
+
+      .layout {
+        padding: 14px;
+      }
+
+      .dense-grid,
+      .two-grid,
+      .inline-pair,
+      .brief-grid,
+      .market-hours-strip,
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .brief-card.action {
+        grid-template-columns: 1fr;
+      }
+
+      .brief-chip {
+        justify-self: start;
+      }
+
+      .step-head {
+        grid-template-columns: auto 1fr auto;
+      }
+
+      .score-control {
+        grid-column: 1 / -1;
+        min-width: 0;
+      }
+
+      .step-toggle {
+        grid-column: 3;
+        grid-row: 1;
+      }
+
+      .source-row {
+        grid-template-columns: 1fr;
+      }
+
+      .scanner-head,
+      .signal-top {
+        grid-template-columns: 1fr;
+        display: grid;
+      }
+
+      .scanner-status,
+      .signal-levels {
+        justify-items: start;
+        text-align: left;
+      }
+
+      .stat-grid,
+      .scan-query,
+      .live-panel,
+      .connector-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body data-share-mode="demo">
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <h1 class="brand-title">Signal Deck Futures</h1>
+          <p class="brand-subtitle">MNQ/NQ primary scanner with ES/MES backup context</p>
+        </div>
+        <div class="status-strip">
+          <span class="pill" id="sessionPill"><i data-lucide="clock-3"></i><span>Checking session</span></span>
+          <span class="pill warning"><i data-lucide="shield-alert"></i><span>Paper only</span></span>
+        </div>
+        <div class="top-actions">
+          <button class="text-button primary" id="copySignal" title="Copy formatted signal"><i data-lucide="copy"></i><span>Copy</span></button>
+          <button class="icon-button" id="downloadSignal" title="Download signal"><i data-lucide="download"></i></button>
+          <button class="icon-button" id="resetDeck" title="Reset deck"><i data-lucide="rotate-ccw"></i></button>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="scanner-console" aria-labelledby="consoleTitle">
+        <div class="scanner-head">
+          <div>
+            <h2 class="console-title" id="consoleTitle">Signal Deck - Day Trade Analyzer</h2>
+            <p class="console-subtitle">Futures scanner - paper trading sim</p>
+          </div>
+          <div class="scanner-status">
+            <span id="consoleSession">Session check</span>
+            <span id="consoleClock">--:-- ET</span>
+          </div>
+        </div>
+        <div class="console-tabs">
+          <div class="console-tab active">Signal</div>
+          <div class="console-tab">Portfolio <span id="portfolioCount">(0)</span></div>
+        </div>
+        <div class="console-body">
+          <div class="market-hours-strip" aria-label="Market hours">
+            <div class="hours-card" id="hoursNowCard">
+              <div class="hours-label">Current window</div>
+              <div class="hours-value" id="hoursNow">Checking</div>
+              <div class="hours-sub" id="hoursNowSub">ET market clock</div>
+            </div>
+            <div class="hours-card neutral">
+              <div class="hours-label">Futures</div>
+              <div class="hours-value">Sun 6 PM - Fri 5 PM ET</div>
+              <div class="hours-sub">Daily break 5-6 PM ET</div>
+            </div>
+            <div class="hours-card neutral">
+              <div class="hours-label">Cash / RTH</div>
+              <div class="hours-value">9:30 AM - 4 PM ET</div>
+              <div class="hours-sub">Best liquidity window</div>
+            </div>
+            <div class="hours-card" id="hoursNextCard">
+              <div class="hours-label">Next change</div>
+              <div class="hours-value" id="hoursNext">-</div>
+              <div class="hours-sub" id="hoursNextSub">Normal schedule</div>
+            </div>
+          </div>
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-label">Balance</div>
+              <div class="stat-value" id="consoleBalance">$5.00</div>
+              <div class="stat-sub" id="consoleProgress">0.00%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">P&L</div>
+              <div class="stat-value" id="consolePnl">+$0.00</div>
+              <div class="stat-sub" id="consoleClosed">0 closed</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Win Rate</div>
+              <div class="stat-value" id="consoleWinRate">0%</div>
+              <div class="stat-sub" id="consoleRecord">0W / 0L</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Open</div>
+              <div class="stat-value" id="consoleOpen">0</div>
+              <div class="stat-sub">positions</div>
+            </div>
+          </div>
+
+          <details class="quick-drawer setup-drawer">
+            <summary><span><i data-lucide="plug-zap"></i>Connections & alerts</span><span class="connection-summary" id="connectionSummary">Checking sync</span><i class="drawer-chevron" data-lucide="chevron-down"></i></summary>
+            <div class="quick-drawer-body">
+              <div class="live-panel" aria-label="Live connector status">
+                <div class="live-tile">
+                  <div class="live-label">Connector</div>
+                  <div class="live-value warn" id="connectorStatus">Checking</div>
+                </div>
+                <div class="live-tile">
+                  <div class="live-label">TradingView</div>
+                  <div class="live-value warn" id="tvStatus">Waiting</div>
+                </div>
+                <div class="live-tile">
+                  <div class="live-label">TopstepX</div>
+                  <div class="live-value warn" id="topstepStatus">Disconnected</div>
+                </div>
+                <div class="live-tile">
+                  <div class="live-label">Webhook</div>
+                  <div class="live-value" id="webhookPath">Local only</div>
+                </div>
+              </div>
+
+              <div class="connector-grid">
+                <div class="field">
+                  <label for="topstepUser">TopstepX username</label>
+                  <input id="topstepUser" autocomplete="username" placeholder="ProjectX / TopstepX username">
+                </div>
+                <div class="field">
+                  <label for="topstepKey">TopstepX API key</label>
+                  <input id="topstepKey" class="secret-input" autocomplete="off" placeholder="Kept in local connector memory only">
+                </div>
+                <button class="text-button primary" id="connectTopstep" title="Connect TopstepX read-only"><i data-lucide="plug-zap"></i><span>Connect</span></button>
+              </div>
+
+              <div class="alert-helper">
+                <div class="live-label">TradingView alert message</div>
+                <textarea id="alertTemplate" spellcheck="false"></textarea>
+                <button class="text-button" id="copyAlertTemplate" title="Copy TradingView alert message"><i data-lucide="copy"></i><span>Copy Alert Message</span></button>
+              </div>
+            </div>
+          </details>
+
+          <div class="contract-row" aria-label="Contract selection">
+            <span>Contract:</span>
+            <button class="contract-button" data-contract="MNQ/NQ">MNQ ($2/pt)</button>
+            <button class="contract-button" data-contract="NQ">NQ ($20/pt)</button>
+            <button class="contract-button" data-contract="MES/ES">MES ($5/pt)</button>
+            <button class="contract-button" data-contract="ES">ES ($50/pt)</button>
+          </div>
+
+          <div class="scan-query">
+            <input id="scanPrompt" data-save placeholder="Top futures setup right now: MNQ/NQ first, ES/MES backup">
+            <button id="scanButton">Scan</button>
+          </div>
+
+          <div class="filter-row" aria-label="Scanner presets">
+            <button class="filter-chip" data-preset="Full futures scan">Full futures scan</button>
+            <button class="filter-chip" data-preset="MNQ/NQ">MNQ/NQ</button>
+            <button class="filter-chip" data-preset="MES/ES">MES/ES</button>
+            <button class="filter-chip" data-preset="Semis">Semis</button>
+            <button class="filter-chip" data-preset="AI leaders">AI leaders</button>
+            <button class="filter-chip" data-preset="Macro risk">Macro risk</button>
+          </div>
+
+          <button class="get-signal-button" id="getSignalButton">Get Signal</button>
+          <div class="updated-line" id="consoleUpdated">Last updated: --</div>
+
+          <div class="signal-card" id="consoleSignalCard">
+            <div class="signal-top">
+              <div>
+                <div class="signal-label">Signal</div>
+                <div class="signal-action" id="consoleAction">WAIT</div>
+                <div class="signal-meta" id="consoleConfidence">Confidence: LOW</div>
+              </div>
+              <div class="signal-levels">
+                <div>Entry: <span id="consoleEntry">-</span></div>
+                <div>Stop: <span id="consoleStop">-</span></div>
+                <div>Target: <span id="consoleTarget">-</span></div>
+              </div>
+            </div>
+            <button class="log-button" id="logTradeButton">+ Log Paper Trade</button>
+          </div>
+
+          <div class="journal-wrap" id="journalWrap" data-open="false">
+            <button class="journal-toggle" id="journalToggle" title="Show or hide the full signal journal">
+              <span><i data-lucide="book-open-text"></i>Signal Journal</span>
+              <i data-lucide="chevron-down"></i>
+            </button>
+            <div class="console-output" id="consoleOutput">Run a scan or enter data below. If the market is closed or the setup is incomplete, the deck should say WAIT.</div>
+          </div>
+          <div class="logged-list" id="loggedList"></div>
+        </div>
+      </section>
+
+      <section class="decision-stack" id="decisionStack" aria-label="Quick decision workspace"></section>
+
+      <section class="main-stack">
+        <section class="panel" aria-labelledby="marketDataTitle">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title" id="marketDataTitle"><i data-lucide="activity"></i>Real-Time Data Pull</h2>
+              <p class="panel-subtitle" id="marketSubcopy">Enter verified values from your live sources before generating a signal.</p>
+            </div>
+            <div class="panel-actions">
+              <span class="pill warning" id="marketSyncPill"><i data-lucide="radio"></i><span>Waiting signal</span></span>
+              <span class="pill" id="dataStatus"><i data-lucide="database"></i><span>Needs data</span></span>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="dense-grid" style="margin-bottom:12px">
+              <div class="field">
+                <label for="marketMode">Primary market</label>
+                <select id="marketMode" data-save>
+                  <option value="MNQ/NQ">MNQ/NQ</option>
+                  <option value="MES/ES">MES/ES</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="backupMode">Backup market</label>
+                <select id="backupMode" data-save>
+                  <option value="MES/ES">MES/ES</option>
+                  <option value="MNQ/NQ">MNQ/NQ</option>
+                  <option value="Off">Off</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="eventRisk">Event risk</label>
+                <select id="eventRisk" data-save>
+                  <option>Clear</option>
+                  <option>Major data within 30 min</option>
+                  <option>Fed speaker / FOMC risk</option>
+                  <option>Mega-cap earnings risk</option>
+                  <option>Geopolitical / oil shock</option>
+                  <option>Market closed</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="holdPlan">Holding plan</label>
+                <select id="holdPlan" data-save>
+                  <option>Intraday only</option>
+                  <option>Scalp only</option>
+                  <option>Exit before close</option>
+                  <option>Overnight paper hold planned</option>
+                  <option>No trade</option>
+                </select>
+              </div>
+            </div>
+            <div class="dense-grid">
+              <div class="field">
+                <label for="price" id="priceLabel">MNQ/NQ price</label>
+                <input id="price" data-save type="number" step="0.25" placeholder="XXXXX.XX">
+              </div>
+              <div class="field">
+                <label for="dayHigh">Session high</label>
+                <input id="dayHigh" data-save type="number" step="0.25" placeholder="High">
+              </div>
+              <div class="field">
+                <label for="dayLow">Session low</label>
+                <input id="dayLow" data-save type="number" step="0.25" placeholder="Low">
+              </div>
+              <div class="field">
+                <label for="volumeTone">Volume</label>
+                <select id="volumeTone" data-save>
+                  <option>Normal</option>
+                  <option>Above average</option>
+                  <option>Below average</option>
+                  <option>Thin / unreliable</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="vwap">VWAP</label>
+                <input id="vwap" data-save type="number" step="0.25" placeholder="VWAP">
+              </div>
+            </div>
+
+            <details class="quick-drawer data-drawer">
+              <summary><span><i data-lucide="sliders-horizontal"></i>Extra levels & sources</span><i class="drawer-chevron" data-lucide="chevron-down"></i></summary>
+              <div class="quick-drawer-body">
+                <div class="dense-grid">
+              <div class="field">
+                <label for="onHigh">Overnight high</label>
+                <input id="onHigh" data-save type="number" step="0.25" placeholder="ONH">
+              </div>
+              <div class="field">
+                <label for="onLow">Overnight low</label>
+                <input id="onLow" data-save type="number" step="0.25" placeholder="ONL">
+              </div>
+              <div class="field">
+                <label for="pdh">Prior day high</label>
+                <input id="pdh" data-save type="number" step="0.25" placeholder="PDH">
+              </div>
+              <div class="field">
+                <label for="pdl">Prior day low</label>
+                <input id="pdl" data-save type="number" step="0.25" placeholder="PDL">
+              </div>
+              <div class="field">
+                <label for="pdc">Prior day close</label>
+                <input id="pdc" data-save type="number" step="0.25" placeholder="PDC">
+              </div>
+              <div class="field">
+                <label for="orHigh">Opening range high</label>
+                <input id="orHigh" data-save type="number" step="0.25" placeholder="OR high">
+              </div>
+              <div class="field">
+                <label for="orLow">Opening range low</label>
+                <input id="orLow" data-save type="number" step="0.25" placeholder="OR low">
+              </div>
+            </div>
+
+            <div class="two-grid" style="margin-top:12px">
+              <div class="field">
+                <label for="gapNote">Gap from prior close</label>
+                <input id="gapNote" data-save placeholder="Example: +42 pts above PDC">
+              </div>
+              <div class="field">
+                <label for="majorRound">Major round number</label>
+                <input id="majorRound" data-save type="number" step="25" placeholder="20000">
+              </div>
+            </div>
+
+            <div class="source-row">
+              <div class="field">
+                <label for="sources">Source URLs</label>
+                <textarea id="sources" data-save placeholder="Paste the URLs used for current price, levels, macro/news, and confirmation."></textarea>
+              </div>
+              <button class="text-button" id="stampTime" title="Stamp current review time"><i data-lucide="timer-reset"></i><span>Stamp</span></button>
+            </div>
+
+            <div class="quick-links" aria-label="Research links">
+              <a class="quick-link" href="https://www.cmegroup.com/markets/equities/nasdaq/e-mini-nasdaq-100.html" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>CME NQ</a>
+              <a class="quick-link" href="https://www.cmegroup.com/markets/equities/nasdaq/micro-e-mini-nasdaq-100.html" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>CME MNQ</a>
+              <a class="quick-link" href="https://www.cmegroup.com/markets/equities/sp/e-mini-sandp500.html" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>CME ES</a>
+              <a class="quick-link" href="https://www.cmegroup.com/markets/equities/sp/micro-e-mini-sandp-500.html" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>CME MES</a>
+              <a class="quick-link" href="https://www.tradingview.com/symbols/CME_MINI-NQ1!/" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>NQ chart</a>
+              <a class="quick-link" href="https://www.nasdaq.com/market-activity/etf/qqq" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>QQQ</a>
+              <a class="quick-link" href="https://www.marketwatch.com/investing/bond/tmubmusd10y" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>10Y yield</a>
+            </div>
+              </div>
+            </details>
+          </div>
+          <div class="market-visual">
+            <div class="chart-wrap">
+              <canvas id="ladderCanvas" width="900" height="260" aria-label="Signal price ladder"></canvas>
+            </div>
+            <div class="metrics" id="riskMetrics">
+              <div class="metric" id="riskMetric">
+                <div class="metric-label">Risk</div>
+                <div class="metric-value" id="riskValue">-</div>
+              </div>
+              <div class="metric" id="rewardMetric">
+                <div class="metric-label">Target 2 reward</div>
+                <div class="metric-value" id="rewardValue">-</div>
+              </div>
+              <div class="metric" id="rrMetric">
+                <div class="metric-label">Risk / reward</div>
+                <div class="metric-value" id="rrValue">-</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="scorecardTitle">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title" id="scorecardTitle"><i data-lucide="list-checks"></i>Signal Scorecard</h2>
+              <p class="panel-subtitle">A trade must earn the setup. Mixed or missing evidence should lean WAIT.</p>
+            </div>
+            <span class="pill" id="scorePill"><i data-lucide="gauge"></i><span>0 / 5 aligned</span></span>
+          </div>
+          <div class="panel-body">
+            <div class="step-list" id="stepList"></div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="confirmationTitle">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title" id="confirmationTitle"><i data-lucide="radar"></i>Primary + Backup Confirmation</h2>
+              <p class="panel-subtitle">Check whether the primary signal is supported by Nasdaq internals and the ES/MES backup read.</p>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="dense-grid">
+              <div class="field">
+                <label for="qqqDirection">QQQ direction</label>
+                <select id="qqqDirection" data-save>
+                  <option>Neutral</option>
+                  <option>Bullish</option>
+                  <option>Bearish</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="megaCap">Mega-cap leaders</label>
+                <select id="megaCap" data-save>
+                  <option>Mixed</option>
+                  <option>Confirming</option>
+                  <option>Diverging</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="semiTone">Semiconductors</label>
+                <select id="semiTone" data-save>
+                  <option>Neutral</option>
+                  <option>Bullish</option>
+                  <option>Bearish</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="yieldImpact">Yields impact</label>
+                <select id="yieldImpact" data-save>
+                  <option>Neutral</option>
+                  <option>Supportive</option>
+                  <option>Pressuring</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="volatility">Volatility</label>
+                <select id="volatility" data-save>
+                  <option>Neutral</option>
+                  <option>Falling</option>
+                  <option>Rising</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="reviewTime">Review time</label>
+                <input id="reviewTime" data-save placeholder="Auto-stamped">
+              </div>
+              <div class="field">
+                <label for="backupBias">Backup market bias</label>
+                <select id="backupBias" data-save>
+                  <option>Neutral</option>
+                  <option>Confirming long</option>
+                  <option>Confirming short</option>
+                  <option>Opposing primary</option>
+                  <option>No clean setup</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="backupQuality">Backup quality</label>
+                <select id="backupQuality" data-save>
+                  <option>Useful context</option>
+                  <option>Cleaner than primary</option>
+                  <option>Too choppy</option>
+                  <option>Thin / unreliable</option>
+                </select>
+              </div>
+              <div class="field" style="grid-column:1 / -1">
+                <label for="newsImpact">News impact</label>
+                <textarea id="newsImpact" data-save placeholder="Most relevant headline plus short-term and longer-term impact."></textarea>
+              </div>
+              <div class="field" style="grid-column:1 / -1">
+                <label for="backupNotes">Backup notes</label>
+                <textarea id="backupNotes" data-save placeholder="Use ES/MES as confirmation or fallback only when MNQ/NQ is too volatile, unclear, or stretched."></textarea>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <aside class="side-stack">
+        <section class="panel challenge-panel" aria-labelledby="challengeTitle">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title" id="challengeTitle"><i data-lucide="repeat-2"></i>Paper Challenge Loop</h2>
+              <p class="panel-subtitle">Track the tiny-account doubling run without overriding WAIT signals.</p>
+            </div>
+          </div>
+          <div class="panel-body compact-stack">
+            <div class="inline-pair">
+              <div class="field">
+                <label for="accountStart">Start balance</label>
+                <input id="accountStart" data-save type="number" step="0.01" value="5.00">
+              </div>
+              <div class="field">
+                <label for="accountBalance">Current balance</label>
+                <input id="accountBalance" data-save type="number" step="0.01" value="5.00">
+              </div>
+            </div>
+            <div class="inline-pair">
+              <div class="field">
+                <label for="maxRiskDollars">Max risk</label>
+                <input id="maxRiskDollars" data-save type="number" step="0.01" value="20.00">
+              </div>
+              <div class="field">
+                <label for="recheckMinutes">Recheck minutes</label>
+                <input id="recheckMinutes" data-save type="number" step="1" value="30">
+              </div>
+            </div>
+            <div class="field">
+              <label for="lastTradeResult">Last paper result</label>
+              <input id="lastTradeResult" data-save placeholder="Example: +$40, WAIT, stopped, no fill">
+            </div>
+            <div class="inline-pair">
+              <div class="field">
+                <label for="lastCheck">Last check</label>
+                <input id="lastCheck" data-save placeholder="Auto-stamped">
+              </div>
+              <div class="field">
+                <label for="nextCheck">Next check</label>
+                <input id="nextCheck" data-save placeholder="Auto-calculated">
+              </div>
+            </div>
+            <button class="text-button" id="stampCheck" title="Stamp this scan and calculate the next check"><i data-lucide="scan-line"></i><span>Stamp Scan</span></button>
+            <div class="challenge-band">
+              <div class="progress-track" aria-label="Doubling progress">
+                <span class="progress-fill" id="challengeProgress"></span>
+              </div>
+              <div class="challenge-status" id="challengeStatus">Enter the paper balance to track the next double.</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel trade-plan-panel" aria-labelledby="tradePlanTitle">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title" id="tradePlanTitle"><i data-lucide="route"></i>Trade Plan</h2>
+              <p class="panel-subtitle" id="tradePlanSubcopy">MNQ dollars first, NQ dollars second.</p>
+            </div>
+          </div>
+          <div class="panel-body compact-stack">
+            <div>
+              <div class="action-control" role="group" aria-label="Action">
+                <button class="seg action-seg" data-action="LONG" data-value="LONG">LONG</button>
+                <button class="seg action-seg" data-action="SHORT" data-value="SHORT">SHORT</button>
+                <button class="seg action-seg" data-action="WAIT" data-value="WAIT">WAIT</button>
+              </div>
+              <div class="confidence-control" role="group" aria-label="Confidence">
+                <button class="seg confidence-seg" data-confidence="HIGH">HIGH</button>
+                <button class="seg confidence-seg" data-confidence="MEDIUM">MEDIUM</button>
+                <button class="seg confidence-seg" data-confidence="LOW">LOW</button>
+              </div>
+            </div>
+
+            <div class="inline-pair">
+              <div class="field">
+                <label for="entry">Entry</label>
+                <input id="entry" data-save type="number" step="0.25" placeholder="Entry">
+              </div>
+              <div class="field">
+                <label for="stop">Stop</label>
+                <input id="stop" data-save type="number" step="0.25" placeholder="Stop">
+              </div>
+            </div>
+            <div class="inline-pair">
+              <div class="field">
+                <label for="target1">Target 1</label>
+                <input id="target1" data-save type="number" step="0.25" placeholder="T1">
+              </div>
+              <div class="field">
+                <label for="target2">Target 2</label>
+                <input id="target2" data-save type="number" step="0.25" placeholder="T2">
+              </div>
+            </div>
+            <details class="quick-drawer trade-notes-drawer">
+              <summary><span><i data-lucide="notebook-pen"></i>Reasoning & exits</span><i class="drawer-chevron" data-lucide="chevron-down"></i></summary>
+              <div class="quick-drawer-body">
+                <div class="field">
+                  <label for="reasoning">Reasoning</label>
+                  <textarea id="reasoning" data-save placeholder="2-3 sentences explaining the trade logic step by step."></textarea>
+                </div>
+                <div class="field">
+                  <label for="exitTriggers">Exit triggers</label>
+                  <textarea id="exitTriggers" data-save placeholder="One trigger per line: T1, T2, stop-out, invalidation, time exit."></textarea>
+                </div>
+              </div>
+            </details>
+            <div class="guardrail" id="guardrail">Enter live data, sources, and a complete plan before taking any paper signal.</div>
+          </div>
+        </section>
+
+        <section class="panel risk-panel" aria-labelledby="riskTitle">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title" id="riskTitle"><i data-lucide="shield-check"></i>Risk Rules</h2>
+              <p class="panel-subtitle">The deck flags discipline before direction.</p>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="risk-list">
+              <label class="checkline"><input type="checkbox" data-risk data-save id="risk1"><span>Max risk is reasonable for the paper account.</span></label>
+              <label class="checkline"><input type="checkbox" data-risk data-save id="risk2"><span>Position size is 1 micro contract for practice.</span></label>
+              <label class="checkline"><input type="checkbox" data-risk data-save id="risk3"><span>No CPI, FOMC, NFP, major Fed speaker, or mega-cap earnings conflict.</span></label>
+              <label class="checkline"><input type="checkbox" data-risk data-save id="risk4"><span>Stop will not be widened after entry.</span></label>
+              <label class="checkline"><input type="checkbox" data-risk data-save id="risk5"><span>If two consecutive losers or one challenge failure happens, trading stops for the session.</span></label>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel output-panel" aria-labelledby="outputTitle">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title" id="outputTitle"><i data-lucide="clipboard-check"></i>Signal Brief</h2>
+              <p class="panel-subtitle" id="briefSubtitle">Action, levels, risk, and recheck status.</p>
+            </div>
+          </div>
+          <div class="panel-body output-body">
+            <div class="brief-grid" id="signalBrief">
+              <div class="brief-card action wait" id="briefActionCard">
+                <div>
+                  <div class="brief-label">Action</div>
+                  <div class="brief-action-value" id="briefAction">WAIT</div>
+                </div>
+                <div class="brief-chip" id="briefConfidence">LOW confidence</div>
+              </div>
+              <div class="brief-card">
+                <div class="brief-label">Market</div>
+                <div class="brief-value" id="briefMarket">MNQ/NQ</div>
+              </div>
+              <div class="brief-card">
+                <div class="brief-label">Price</div>
+                <div class="brief-value" id="briefPrice">-</div>
+              </div>
+              <div class="brief-card">
+                <div class="brief-label">Entry / Stop</div>
+                <div class="brief-value" id="briefEntryStop">No active entry</div>
+              </div>
+              <div class="brief-card">
+                <div class="brief-label">Targets / Risk</div>
+                <div class="brief-value" id="briefTargetsRisk">No active risk</div>
+              </div>
+              <div class="brief-card">
+                <div class="brief-label">Backup / Event</div>
+                <div class="brief-value" id="briefContext">MES/ES - Clear</div>
+              </div>
+              <div class="brief-card">
+                <div class="brief-label">Next Check</div>
+                <div class="brief-value" id="briefNextCheck">-</div>
+              </div>
+            </div>
+            <div class="brief-note" id="briefNote">No entry recommended yet.</div>
+            <details class="raw-signal" id="rawSignalDetails">
+              <summary><span><i data-lucide="file-text"></i>Journal text</span><i class="raw-chevron" data-lucide="chevron-down"></i></summary>
+              <textarea class="signal-output" id="signalOutput" spellcheck="false"></textarea>
+            </details>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <p class="footer-note">Risk disclaimer: This is a paper-trading education tool. It does not provide financial advice. Futures are leveraged and carry substantial risk.</p>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "signalDeckFutures.demo.v1";
+    const APP_BUILD_ID = "2026-05-31-share-demo-v1";
+    const DEMO_MODE = true;
+    const CONNECTOR_URL = "";
+    const HEALTH_POLL_MS = 10000;
+    const PAGE_VERSION_POLL_MS = 30000;
+    let connectorStream = null;
+    let connectorPollTimer = null;
+    let lastConnectorSync = null;
+    const CONTRACTS = {
+      "MNQ/NQ": {
+        micro: "MNQ",
+        full: "NQ",
+        microPoint: 2,
+        fullPoint: 20,
+        riskWarn: 60,
+        riskDanger: 80,
+        title: "MNQ/NQ FUTURES SIGNAL",
+        confirmation: "NASDAQ CONFIRMATION",
+        priceLabel: "MNQ/NQ price",
+        context: "QQQ, mega-cap leaders, semiconductors, yields, and volatility"
+      },
+      "MES/ES": {
+        micro: "MES",
+        full: "ES",
+        microPoint: 5,
+        fullPoint: 50,
+        riskWarn: 40,
+        riskDanger: 60,
+        title: "MES/ES FUTURES SIGNAL",
+        confirmation: "S&P 500 CONFIRMATION",
+        priceLabel: "MES/ES price",
+        context: "SPY, sector breadth, mega-cap leaders, yields, and volatility"
+      }
+    };
+
+    const steps = [
+      {
+        id: "macd",
+        number: 1,
+        title: "MACD Momentum",
+        placeholder: "MACD line, signal line, histogram expansion/contraction, and crossover timing."
+      },
+      {
+        id: "rsi",
+        number: 2,
+        title: "RSI + VWAP",
+        placeholder: "RSI zone, VWAP position, stretch, rejection, or VWAP hold."
+      },
+      {
+        id: "cvd",
+        number: 3,
+        title: "CVD Divergence",
+        placeholder: "Flow confirmation, bullish divergence, bearish divergence, or no signal."
+      },
+      {
+        id: "history",
+        number: 4,
+        title: "Historical Match",
+        placeholder: "Trend/range/breakout regime, similar recent setups, key moving averages, calendar effect."
+      },
+      {
+        id: "macro",
+        number: 5,
+        title: "News / Macro",
+        macro: true,
+        placeholder: "Fed, yields, dollar, tech earnings, AI/chip news, VXN/VIX, and event risk."
+      }
+    ];
+
+    const els = {};
+    let deckState = {
+      action: "WAIT",
+      confidence: "LOW",
+      scores: {},
+      executionContract: "MNQ",
+      logs: []
+    };
+
+    function byId(id) {
+      return document.getElementById(id);
+    }
+
+    function init() {
+      [
+        "marketMode", "backupMode", "eventRisk", "holdPlan",
+        "price", "dayHigh", "dayLow", "volumeTone", "onHigh", "onLow", "pdh", "pdl", "pdc",
+        "vwap", "orHigh", "orLow", "gapNote", "majorRound", "sources", "qqqDirection",
+        "megaCap", "semiTone", "yieldImpact", "volatility", "reviewTime", "backupBias",
+        "backupQuality", "newsImpact", "backupNotes", "accountStart", "accountBalance",
+        "maxRiskDollars", "recheckMinutes", "lastTradeResult", "lastCheck", "nextCheck",
+        "entry", "stop", "target1", "target2", "reasoning", "exitTriggers", "scanPrompt", "signalOutput"
+      ].forEach(id => els[id] = byId(id));
+
+      arrangeDecisionPanels();
+      renderSteps();
+      loadState();
+      applyDefaultValues();
+      bindEvents();
+      detectSession();
+      updateAll();
+      if (DEMO_MODE) {
+        setDemoConnectionState();
+      } else {
+        startConnector();
+      }
+      startPageVersionWatcher();
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function arrangeDecisionPanels() {
+      const stack = byId("decisionStack");
+      const briefPanel = document.querySelector(".output-panel");
+      const tradePanel = document.querySelector(".trade-plan-panel");
+      if (!stack || !briefPanel || !tradePanel) return;
+      stack.appendChild(briefPanel);
+      stack.appendChild(tradePanel);
+    }
+
+    function startPageVersionWatcher() {
+      if (window.location.protocol !== "http:" && window.location.protocol !== "https:") return;
+      setInterval(checkForDeckUpdate, PAGE_VERSION_POLL_MS);
+    }
+
+    async function checkForDeckUpdate() {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set("deckVersionCheck", Date.now().toString());
+        const response = await fetch(url.toString(), { cache: "no-store" });
+        if (!response.ok) return;
+        const html = await response.text();
+        const match = html.match(/const APP_BUILD_ID = "([^"]+)"/);
+        if (!match || match[1] === APP_BUILD_ID) return;
+        saveState();
+        window.location.reload();
+      } catch (error) {
+        // Local refresh checks are best-effort; live market/webhook sync keeps running.
+      }
+    }
+
+    function renderSteps() {
+      const list = byId("stepList");
+      list.innerHTML = steps.map(step => {
+        const values = step.macro ? ["BULLISH", "BEARISH", "NEUTRAL"] : ["PASS", "FAIL", "NEUTRAL"];
+        return `
+          <div class="step" data-step="${step.id}" data-open="false">
+            <div class="step-head">
+              <span class="step-number">${step.number}</span>
+              <div class="step-title-wrap">
+                <div class="step-title">${step.title}</div>
+                <div class="step-summary" id="${step.id}Summary">No evidence notes yet</div>
+              </div>
+              <div class="score-control" role="group" aria-label="${step.title}">
+                ${values.map(value => `<button class="seg score-seg" data-step-id="${step.id}" data-value="${value}">${value}</button>`).join("")}
+              </div>
+              <button class="icon-button step-toggle" type="button" data-step-toggle="${step.id}" aria-expanded="false" aria-controls="${step.id}Body" title="Open evidence notes"><i data-lucide="chevron-down"></i></button>
+            </div>
+            <div class="step-body" id="${step.id}Body">
+              <div class="field">
+                <label for="${step.id}Reason">Evidence</label>
+                <textarea id="${step.id}Reason" data-save data-score-reason="${step.id}" placeholder="${step.placeholder}"></textarea>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+      steps.forEach(step => {
+        deckState.scores[step.id] = deckState.scores[step.id] || (step.macro ? "NEUTRAL" : "NEUTRAL");
+      });
+    }
+
+    function bindEvents() {
+      document.querySelectorAll("[data-save]").forEach(el => {
+        el.addEventListener("input", updateAll);
+        el.addEventListener("change", updateAll);
+      });
+
+      document.querySelectorAll(".score-seg").forEach(button => {
+        button.addEventListener("click", () => {
+          deckState.scores[button.dataset.stepId] = button.dataset.value;
+          updateAll();
+        });
+      });
+
+      document.querySelectorAll(".step-toggle").forEach(button => {
+        button.addEventListener("click", () => {
+          const step = button.closest(".step");
+          const isOpen = step.dataset.open === "true";
+          step.dataset.open = String(!isOpen);
+          button.setAttribute("aria-expanded", String(!isOpen));
+          button.title = isOpen ? "Open evidence notes" : "Close evidence notes";
+          if (window.lucide) window.lucide.createIcons();
+        });
+      });
+
+      document.querySelectorAll(".action-seg").forEach(button => {
+        button.addEventListener("click", () => {
+          deckState.action = button.dataset.action;
+          updateAll();
+        });
+      });
+
+      document.querySelectorAll(".confidence-seg").forEach(button => {
+        button.addEventListener("click", () => {
+          deckState.confidence = button.dataset.confidence;
+          updateAll();
+        });
+      });
+
+      document.querySelectorAll(".contract-button").forEach(button => {
+        button.addEventListener("click", () => {
+          deckState.executionContract = button.dataset.contract;
+          if (button.dataset.contract === "MES/ES" || button.dataset.contract === "ES") {
+            els.marketMode.value = "MES/ES";
+            els.backupMode.value = "MNQ/NQ";
+          } else {
+            els.marketMode.value = "MNQ/NQ";
+            els.backupMode.value = "MES/ES";
+          }
+          updateAll();
+        });
+      });
+
+      document.querySelectorAll(".filter-chip").forEach(button => {
+        button.addEventListener("click", () => {
+          els.scanPrompt.value = button.dataset.preset;
+          updateAll();
+        });
+      });
+
+      byId("copySignal").addEventListener("click", copySignal);
+      byId("downloadSignal").addEventListener("click", downloadSignal);
+      byId("resetDeck").addEventListener("click", resetDeck);
+      byId("scanButton").addEventListener("click", runConsoleScan);
+      byId("getSignalButton").addEventListener("click", runConsoleScan);
+      byId("logTradeButton").addEventListener("click", logPaperTrade);
+      byId("connectTopstep").addEventListener("click", connectTopstep);
+      byId("copyAlertTemplate").addEventListener("click", copyAlertTemplate);
+      byId("journalToggle").addEventListener("click", () => {
+        const wrap = byId("journalWrap");
+        wrap.dataset.open = String(wrap.dataset.open !== "true");
+        if (window.lucide) window.lucide.createIcons();
+      });
+      byId("stampTime").addEventListener("click", () => {
+        els.reviewTime.value = new Date().toLocaleString("en-US", { timeZone: "America/New_York" }) + " ET";
+        updateAll();
+      });
+      byId("stampCheck").addEventListener("click", stampScan);
+
+      window.addEventListener("resize", drawLadder);
+    }
+
+    function loadState() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        stampInitialTime();
+        return;
+      }
+      try {
+        const saved = JSON.parse(raw);
+        deckState = {
+          action: saved.action || "WAIT",
+          confidence: saved.confidence || "LOW",
+          scores: saved.scores || {},
+          executionContract: saved.executionContract || "MNQ",
+          logs: Array.isArray(saved.logs) ? saved.logs : []
+        };
+        Object.entries(saved.fields || {}).forEach(([id, value]) => {
+          const el = byId(id);
+          if (!el) return;
+          if (el.type === "checkbox") el.checked = Boolean(value);
+          else el.value = value;
+        });
+      } catch (error) {
+        stampInitialTime();
+      }
+    }
+
+    function stampInitialTime() {
+      if (els.reviewTime) {
+        els.reviewTime.value = new Date().toLocaleString("en-US", { timeZone: "America/New_York" }) + " ET";
+      }
+    }
+
+    function applyDefaultValues() {
+      if (els.accountStart && !els.accountStart.value) els.accountStart.value = "5.00";
+      if (els.accountBalance && !els.accountBalance.value) els.accountBalance.value = "5.00";
+      if (els.maxRiskDollars && !els.maxRiskDollars.value) els.maxRiskDollars.value = "20.00";
+      if (els.recheckMinutes && !els.recheckMinutes.value) els.recheckMinutes.value = "30";
+    }
+
+    function saveState() {
+      const fields = {};
+      document.querySelectorAll("[data-save]").forEach(el => {
+        fields[el.id] = el.type === "checkbox" ? el.checked : el.value;
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        action: deckState.action,
+        confidence: deckState.confidence,
+        executionContract: deckState.executionContract,
+        logs: deckState.logs,
+        scores: deckState.scores,
+        fields
+      }));
+    }
+
+    function updateAll() {
+      updateLabels();
+      updateSegments();
+      updateStatus();
+      updateMetrics();
+      updateChallenge();
+      drawLadder();
+      buildSignal();
+      updateConsole();
+      saveState();
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function updateSegments() {
+      document.querySelectorAll(".score-seg").forEach(button => {
+        const active = deckState.scores[button.dataset.stepId] === button.dataset.value;
+        button.dataset.active = String(active);
+      });
+      document.querySelectorAll(".step").forEach(step => {
+        step.dataset.score = deckState.scores[step.dataset.step] || "NEUTRAL";
+      });
+      updateStepSummaries();
+      document.querySelectorAll(".action-seg").forEach(button => {
+        button.dataset.active = String(deckState.action === button.dataset.action);
+      });
+      document.querySelectorAll(".confidence-seg").forEach(button => {
+        button.dataset.active = String(deckState.confidence === button.dataset.confidence);
+        button.dataset.value = deckState.confidence === button.dataset.confidence ? deckState.action : "";
+      });
+      document.querySelectorAll(".contract-button").forEach(button => {
+        const contract = button.dataset.contract;
+        const active = deckState.executionContract === contract ||
+          (contract === "MNQ/NQ" && deckState.executionContract === "MNQ") ||
+          (contract === "MES/ES" && deckState.executionContract === "MES");
+        button.dataset.active = String(active);
+      });
+    }
+
+    function updateStepSummaries() {
+      steps.forEach(step => {
+        const summary = byId(`${step.id}Summary`);
+        if (!summary) return;
+        const note = textValue(`${step.id}Reason`, "");
+        const score = deckState.scores[step.id] || "NEUTRAL";
+        const preview = note ? shortText(note, "", 90) : "Open notes to add evidence.";
+        summary.textContent = `${score}: ${preview}`;
+      });
+    }
+
+    function numberValue(id) {
+      const value = parseFloat((byId(id)?.value || "").replace(/,/g, ""));
+      return Number.isFinite(value) ? value : null;
+    }
+
+    function toNumber(value) {
+      const parsed = parseFloat(String(value ?? "").replace(/,/g, ""));
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function textValue(id, fallback = "-") {
+      const value = (byId(id)?.value || "").trim();
+      return value || fallback;
+    }
+
+    function contractSpec() {
+      return CONTRACTS[textValue("marketMode", "MNQ/NQ")] || CONTRACTS["MNQ/NQ"];
+    }
+
+    function backupSpecName() {
+      const backup = textValue("backupMode", "MES/ES");
+      return backup === "Off" ? "Off" : backup;
+    }
+
+    function executionContract() {
+      const value = deckState.executionContract || contractSpec().micro;
+      if (value === "MNQ/NQ") return "MNQ";
+      if (value === "MES/ES") return "MES";
+      return value;
+    }
+
+    function executionPointValue() {
+      const spec = contractSpec();
+      const execution = executionContract();
+      if (execution === spec.full) return spec.fullPoint;
+      if (execution === "NQ") return CONTRACTS["MNQ/NQ"].fullPoint;
+      if (execution === "ES") return CONTRACTS["MES/ES"].fullPoint;
+      if (execution === "MES") return CONTRACTS["MES/ES"].microPoint;
+      return spec.microPoint;
+    }
+
+    function updateLabels() {
+      const spec = contractSpec();
+      byId("priceLabel").textContent = spec.priceLabel;
+      byId("tradePlanSubcopy").textContent = `${spec.micro} dollars first, ${spec.full} dollars second.`;
+      byId("marketSubcopy").textContent = `Primary: ${spec.micro}/${spec.full}. Backup context: ${backupSpecName()}. Enter verified live values before generating a signal.`;
+    }
+
+    function stampScan() {
+      const now = new Date();
+      const minutes = Math.max(1, numberValue("recheckMinutes") || 30);
+      const next = new Date(now.getTime() + minutes * 60000);
+      els.lastCheck.value = now.toLocaleString("en-US", { timeZone: "America/New_York" }) + " ET";
+      els.nextCheck.value = next.toLocaleString("en-US", { timeZone: "America/New_York" }) + " ET";
+      els.reviewTime.value = els.lastCheck.value;
+      updateAll();
+    }
+
+    function updateChallenge() {
+      const start = Math.max(0.01, numberValue("accountStart") || 5);
+      const balance = Math.max(0, numberValue("accountBalance") || start);
+      const fill = byId("challengeProgress");
+      const status = byId("challengeStatus");
+      let nextTarget = start * 2;
+      while (balance >= nextTarget && nextTarget < 100000000) {
+        nextTarget *= 2;
+      }
+      const previousTarget = nextTarget / 2;
+      const progress = Math.max(0, Math.min(1, (balance - previousTarget) / (nextTarget - previousTarget)));
+      fill.style.width = `${Math.round(progress * 100)}%`;
+      status.textContent = `${money(balance)} paper balance -> next double ${money(nextTarget)} (${Math.round(progress * 100)}% from ${money(previousTarget)}). Last result: ${textValue("lastTradeResult", "none logged")}.`;
+    }
+
+    function scoreBias() {
+      const macro = deckState.scores.macro;
+      const passCount = ["macd", "rsi", "cvd", "history"].filter(id => deckState.scores[id] === "PASS").length;
+      const failCount = ["macd", "rsi", "cvd", "history"].filter(id => deckState.scores[id] === "FAIL").length;
+      if (macro === "BEARISH" || failCount >= 2) return "SHORT";
+      if (macro === "BULLISH" || passCount >= 3) return "LONG";
+      return "WAIT";
+    }
+
+    function runConsoleScan() {
+      stampScan();
+      const hasHardStop = sessionLabel() === "Closed" || textValue("eventRisk", "Clear") !== "Clear";
+      const dataReady = textValue("sources", "").includes("http") && numberValue("price") !== null;
+      if (hasHardStop || !dataReady) {
+        deckState.action = "WAIT";
+        deckState.confidence = "LOW";
+      } else if (deckState.action === "WAIT") {
+        deckState.action = scoreBias();
+        deckState.confidence = deckState.action === "WAIT" ? "LOW" : "MEDIUM";
+      }
+      updateAll();
+      byId("journalWrap").dataset.open = "true";
+      byId("consoleOutput").scrollTop = 0;
+    }
+
+    function logPaperTrade() {
+      const spec = contractSpec();
+      const math = riskMath();
+      const entry = numberValue("entry");
+      const stop = numberValue("stop");
+      const target = numberValue("target2") ?? numberValue("target1");
+      const risk = math.valid ? Math.abs(entry - stop) * executionPointValue() : 0;
+      const row = {
+        time: new Date().toLocaleString("en-US", { timeZone: "America/New_York" }) + " ET",
+        action: deckState.action,
+        contract: executionContract(),
+        primary: `${spec.micro}/${spec.full}`,
+        entry: fmt(entry),
+        stop: fmt(stop),
+        target: fmt(target),
+        risk: money(risk)
+      };
+      deckState.logs.unshift(row);
+      deckState.logs = deckState.logs.slice(0, 12);
+      if (deckState.action !== "WAIT") {
+        els.lastTradeResult.value = `${row.action} ${row.contract} paper trade logged, risk ${row.risk}`;
+      } else {
+        els.lastTradeResult.value = "WAIT logged, no paper trade opened";
+      }
+      updateAll();
+    }
+
+    function updateConsole() {
+      const spec = contractSpec();
+      const math = riskMath();
+      const balance = numberValue("accountBalance") || 0;
+      const start = numberValue("accountStart") || 5;
+      const pnl = balance - start;
+      const progress = start > 0 ? (pnl / start) * 100 : 0;
+      const signalCard = byId("consoleSignalCard");
+      const session = sessionLabel();
+      const now = textValue("lastCheck", textValue("reviewTime", "-"));
+
+      byId("consoleSession").textContent = session === "RTH" ? "RTH Open" : session;
+      byId("consoleClock").textContent = new Date().toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit", second: "2-digit" }) + " ET";
+      byId("consoleBalance").textContent = money(balance || start);
+      byId("consoleProgress").textContent = `${progress >= 0 ? "+" : ""}${progress.toFixed(2)}%`;
+      byId("consolePnl").textContent = `${pnl >= 0 ? "+" : "-"}${money(Math.abs(pnl))}`;
+      byId("consoleClosed").textContent = `${deckState.logs.length} closed`;
+      byId("consoleWinRate").textContent = "0%";
+      byId("consoleRecord").textContent = "0W / 0L";
+      byId("consoleOpen").textContent = deckState.logs.filter(log => log.action !== "WAIT").length;
+      byId("portfolioCount").textContent = `(${deckState.logs.length})`;
+      byId("consoleUpdated").textContent = `Last updated: ${now}`;
+      byId("consoleAction").textContent = deckState.action;
+      byId("consoleConfidence").textContent = `Confidence: ${deckState.confidence}`;
+      byId("consoleEntry").textContent = deckState.action === "WAIT" ? "-" : fmt(numberValue("entry"));
+      byId("consoleStop").textContent = deckState.action === "WAIT" ? "-" : fmt(numberValue("stop"));
+      byId("consoleTarget").textContent = deckState.action === "WAIT" ? "-" : fmt(numberValue("target2") ?? numberValue("target1"));
+
+      signalCard.className = "signal-card";
+      if (deckState.action === "LONG") signalCard.classList.add("long");
+      if (deckState.action === "SHORT") signalCard.classList.add("short");
+
+      byId("consoleOutput").textContent = buildConsoleText(spec, math);
+      byId("loggedList").innerHTML = deckState.logs.map(log =>
+        `<div class="logged-trade">${log.time} - ${log.action} ${log.contract} | Entry ${log.entry} | Stop ${log.stop} | Target ${log.target} | Risk ${log.risk}</div>`
+      ).join("");
+      updateAlertTemplate();
+    }
+
+    function updateAlertTemplate() {
+      const template = byId("alertTemplate");
+      if (!template) return;
+      const spec = contractSpec();
+      template.value = JSON.stringify({
+        ticker: "{{ticker}}",
+        action: "watch",
+        price: "{{close}}",
+        time: "{{timenow}}",
+        interval: "{{interval}}",
+        source: "TradingView",
+        alert_name: "Codex Signal Deck",
+        market: spec.micro,
+        trigger: "price_cross",
+        level: textValue("majorRound", "30386.75"),
+        note: "Wake Signal Deck only. Do not auto-trade."
+      }, null, 2);
+    }
+
+    async function copyAlertTemplate() {
+      const template = byId("alertTemplate").value;
+      try {
+        await navigator.clipboard.writeText(template);
+        flashButton(byId("copyAlertTemplate"), "Copied");
+      } catch {
+        byId("alertTemplate").select();
+        document.execCommand("copy");
+        flashButton(byId("copyAlertTemplate"), "Copied");
+      }
+    }
+
+    function buildConsoleText(spec, math) {
+      const lines = [];
+      const signalText = els.signalOutput ? els.signalOutput.value : "";
+      lines.push("Got everything I have. Here is your full signal, built from the deck inputs:");
+      lines.push("---");
+      lines.push("");
+      lines.push(`${spec.title} - PAPER TRADE`);
+      lines.push(textValue("reviewTime", "-"));
+      lines.push("");
+      lines.push(`ACTION: ${deckState.action}`);
+      lines.push(`CONTRACT: ${executionContract()} (${money(executionPointValue())}/pt)`);
+      lines.push(`PRIMARY: ${spec.micro}/${spec.full} | BACKUP: ${backupSpecName()}`);
+      lines.push(`SESSION: ${sessionLabel()} | EVENT RISK: ${textValue("eventRisk", "Clear")}`);
+      lines.push("");
+      if (deckState.action === "WAIT") {
+        lines.push("NO ENTRY RECOMMENDED:");
+        lines.push("- Market/data/setup has not earned a trade yet.");
+        lines.push("- Rerun the scan on the saved recheck cadence.");
+      } else {
+        lines.push(`ENTRY:  ${fmt(numberValue("entry"))}`);
+        lines.push(`STOP:   ${fmt(numberValue("stop"))}`);
+        lines.push(`TARGET: ${fmt(numberValue("target2") ?? numberValue("target1"))}`);
+        if (math.valid) {
+          const execRisk = math.riskPts * executionPointValue();
+          lines.push(`RISK:   ${points(math.riskPts)} pts = ${executionContract()} ${money(execRisk)}`);
+          lines.push(`R/R:    ${math.rr ? "1:" + math.rr.toFixed(2) : "-"}`);
+        }
+      }
+      lines.push("");
+      lines.push("KEY CONFIRMED DATA POINTS:");
+      lines.push(`- Price: ${fmt(numberValue("price"))}`);
+      lines.push(`- Prior day close: ${fmt(numberValue("pdc"))}`);
+      lines.push(`- Overnight high/low: ${fmt(numberValue("onHigh"))} / ${fmt(numberValue("onLow"))}`);
+      lines.push(`- VWAP: ${fmt(numberValue("vwap"))}`);
+      lines.push(`- Backup read: ${textValue("backupBias", "Neutral")} / ${textValue("backupQuality", "Useful context")}`);
+      lines.push("");
+      lines.push("SCORECARD:");
+      steps.forEach(step => {
+        lines.push(`${step.title}: ${deckState.scores[step.id] || "NEUTRAL"} - ${stepReason(step.id)}`);
+      });
+      lines.push("");
+      lines.push("FULL JOURNAL OUTPUT:");
+      lines.push("---");
+      lines.push(signalText || "No formatted output yet.");
+      return lines.join("\n");
+    }
+
+    async function startConnector() {
+      if (DEMO_MODE) {
+        setDemoConnectionState();
+        return;
+      }
+      if (connectorStream) connectorStream.close();
+      if (connectorPollTimer) clearInterval(connectorPollTimer);
+      connectorPollTimer = setInterval(pollConnectorHealth, HEALTH_POLL_MS);
+      try {
+        const response = await fetch(`${CONNECTOR_URL}/health`, { cache: "no-store" });
+        const state = await response.json();
+        applyConnectorState(state);
+        connectorStream = new EventSource(`${CONNECTOR_URL}/events`);
+        connectorStream.onopen = () => setLiveStatus("connectorStatus", "Auto-sync", "good");
+        connectorStream.onmessage = event => applyConnectorState(JSON.parse(event.data));
+        connectorStream.onerror = () => {
+          setLiveStatus("connectorStatus", "Polling backup", "warn");
+          pollConnectorHealth();
+        };
+      } catch {
+        setLiveStatus("connectorStatus", "Offline", "danger");
+        setLiveStatus("tvStatus", "Waiting", "warn");
+        setLiveStatus("topstepStatus", "Disconnected", "warn");
+      }
+    }
+
+    async function pollConnectorHealth() {
+      if (DEMO_MODE) {
+        setDemoConnectionState();
+        return;
+      }
+      try {
+        const response = await fetch(`${CONNECTOR_URL}/health`, { cache: "no-store" });
+        if (!response.ok) throw new Error("Connector health check failed");
+        applyConnectorState(await response.json());
+      } catch {
+        setLiveStatus("connectorStatus", "Offline", "danger");
+      }
+    }
+
+    function applyConnectorState(state) {
+      lastConnectorSync = new Date();
+      setLiveStatus("connectorStatus", `Auto-sync ${formatConnectorTime(lastConnectorSync.toISOString())}`, "good");
+      const tv = state.tradingView || {};
+      const topstep = state.topstep || {};
+      setLiveStatus("tvStatus", tv.connected ? `Live ${formatConnectorTime(tv.lastReceivedAt)}` : "Waiting", tv.connected ? "good" : "warn");
+      setLiveStatus("topstepStatus", topstep.connected ? (topstep.streaming ? "Streaming" : "Connected") : (topstep.error ? "Error" : "Disconnected"), topstep.connected ? "good" : topstep.error ? "danger" : "warn");
+      if (!DEMO_MODE && state.webhookToken) byId("webhookPath").textContent = "Live webhook configured";
+      if (topstep.error) byId("consoleOutput").textContent = `TopstepX connector error:\n${topstep.error}\n\nThe deck is still safe; order execution is disabled.`;
+      applyLiveMarket({ ...(state.market || {}), receivedAt: tv.lastReceivedAt });
+      applyLiveSignal(state.signal || {});
+      applyTopstepAccount(topstep);
+      updateAll();
+    }
+
+    function setDemoConnectionState() {
+      setLiveStatus("connectorStatus", "Demo mode", "warn");
+      setLiveStatus("tvStatus", "Hidden", "warn");
+      setLiveStatus("topstepStatus", "Hidden", "warn");
+      byId("webhookPath").textContent = "Not shared";
+      setMarketSyncPill("Demo only", "warning");
+      byId("connectionSummary").textContent = "Demo copy - live details hidden";
+      byId("connectionSummary").dataset.tone = "warn";
+    }
+
+    function setLiveStatus(id, text, tone) {
+      const el = byId(id);
+      if (!el) return;
+      el.textContent = text;
+      el.className = `live-value ${tone || ""}`.trim();
+      updateConnectionSummary();
+    }
+
+    function updateConnectionSummary() {
+      const summary = byId("connectionSummary");
+      if (!summary) return;
+      const tv = byId("tvStatus")?.textContent || "Waiting";
+      const topstep = byId("topstepStatus")?.textContent || "Disconnected";
+      const connector = byId("connectorStatus")?.textContent || "Checking";
+      const tvShort = tv.startsWith("Live") ? "TV live" : "TV waiting";
+      const syncShort = connector.startsWith("Auto-sync") ? "sync on" : connector.toLowerCase();
+      summary.textContent = `${tvShort} - Topstep ${topstep.toLowerCase()} - ${syncShort}`;
+      const hasDanger = [tv, topstep, connector].some(text => /offline|error/i.test(text));
+      const hasWarn = [tv, topstep, connector].some(text => /waiting|disconnected|checking|polling|need/i.test(text));
+      summary.dataset.tone = hasDanger ? "danger" : hasWarn ? "warn" : "good";
+    }
+
+    function setMarketSyncPill(text, tone = "warning") {
+      const pill = byId("marketSyncPill");
+      if (!pill) return;
+      pill.className = `pill ${tone}`.trim();
+      pill.innerHTML = `<i data-lucide="radio"></i><span>${text}</span>`;
+    }
+
+    function applyLiveMarket(market) {
+      const incomingPrice = market.price !== undefined ? toNumber(market.price) : null;
+      if (incomingPrice !== null) {
+        setInputValue("price", incomingPrice);
+        trackSessionExtreme("dayHigh", incomingPrice, "high");
+        trackSessionExtreme("dayLow", incomingPrice, "low");
+      }
+      if (market.high !== undefined) setInputValue("dayHigh", market.high);
+      if (market.low !== undefined) setInputValue("dayLow", market.low);
+      if (market.volume !== undefined) els.volumeTone.value = Number(market.volume) > 0 ? "Normal" : els.volumeTone.value;
+      if (market.vwap !== undefined) setInputValue("vwap", market.vwap);
+      if (market.pdh !== undefined) setInputValue("pdh", market.pdh);
+      if (market.pdl !== undefined) setInputValue("pdl", market.pdl);
+      if (market.pdc !== undefined) setInputValue("pdc", market.pdc);
+      if (market.onHigh !== undefined) setInputValue("onHigh", market.onHigh);
+      if (market.onLow !== undefined) setInputValue("onLow", market.onLow);
+      if (market.source && !textValue("sources", "").includes(market.source)) {
+        els.sources.value = [textValue("sources", ""), market.source].filter(Boolean).join("\n");
+      }
+      if (String(market.source || "").toLowerCase().includes("tradingview")) {
+        stampLiveMarketTime(market.receivedAt || market.timestamp);
+      }
+      if (market.receivedAt || market.timestamp) {
+        setMarketSyncPill(`Signal ${formatConnectorTime(market.receivedAt || market.timestamp)}`, "good");
+      }
+    }
+
+    function trackSessionExtreme(id, value, mode) {
+      const current = numberValue(id);
+      if (current === null || (mode === "high" && value > current) || (mode === "low" && value < current)) {
+        setInputValue(id, value);
+      }
+    }
+
+    function stampLiveMarketTime(value) {
+      const receivedAt = parseDateOrNow(value);
+      const stamp = receivedAt.toLocaleString("en-US", { timeZone: "America/New_York" }) + " ET";
+      if (els.reviewTime) els.reviewTime.value = stamp;
+      if (els.lastCheck) els.lastCheck.value = stamp;
+      if (els.nextCheck) {
+        const minutes = Math.max(1, numberValue("recheckMinutes") || 30);
+        const next = new Date(receivedAt.getTime() + minutes * 60000);
+        els.nextCheck.value = next.toLocaleString("en-US", { timeZone: "America/New_York" }) + " ET";
+      }
+    }
+
+    function parseDateOrNow(value) {
+      const date = value ? new Date(value) : new Date();
+      return Number.isFinite(date.getTime()) ? date : new Date();
+    }
+
+    function applyLiveSignal(signal) {
+      const incomingAction = signal.action ? String(signal.action).toUpperCase() : "";
+      const directionalAlert = ["LONG", "SHORT"].includes(incomingAction);
+      const blockReason = hardBlockReason();
+      if (incomingAction && ["LONG", "SHORT", "WAIT"].includes(incomingAction)) {
+        deckState.action = blockReason && incomingAction !== "WAIT" ? "WAIT" : incomingAction;
+      }
+      if (signal.confidence && ["HIGH", "MEDIUM", "LOW"].includes(String(signal.confidence).toUpperCase())) deckState.confidence = String(signal.confidence).toUpperCase();
+      if (signal.entry !== undefined) setInputValue("entry", signal.entry);
+      if (signal.stop !== undefined) setInputValue("stop", signal.stop);
+      if (signal.target1 !== undefined) setInputValue("target1", signal.target1);
+      if (signal.target2 !== undefined) setInputValue("target2", signal.target2);
+      if (signal.reasoning) {
+        els.reasoning.value = blockReason && directionalAlert
+          ? `${blockReason} blocked a live ${incomingAction} alert. Original alert: ${signal.reasoning}`
+          : signal.reasoning;
+      }
+      if (signal.sourceUrl && !textValue("sources", "").includes(signal.sourceUrl)) {
+        els.sources.value = [textValue("sources", ""), signal.sourceUrl].filter(Boolean).join("\n");
+      }
+    }
+
+    function hardBlockReason() {
+      if (sessionLabel() === "Closed") return "Market closed";
+      const eventRisk = textValue("eventRisk", "Clear");
+      if (eventRisk !== "Clear") return eventRisk;
+      return "";
+    }
+
+    function applyTopstepAccount(topstep) {
+      if (topstep.account?.balance !== undefined) setInputValue("accountBalance", topstep.account.balance);
+      const quote = Object.values(topstep.quotes || {})[0];
+      if (quote?.lastPrice !== undefined) {
+        setInputValue("price", quote.lastPrice);
+        if (quote.high !== undefined) setInputValue("dayHigh", quote.high);
+        if (quote.low !== undefined) setInputValue("dayLow", quote.low);
+        if (quote.volume !== undefined) els.volumeTone.value = "Normal";
+      }
+    }
+
+    async function connectTopstep() {
+      if (DEMO_MODE) {
+        setLiveStatus("topstepStatus", "Hidden", "warn");
+        return;
+      }
+      const userName = byId("topstepUser").value.trim();
+      const apiKey = byId("topstepKey").value.trim();
+      if (!userName || !apiKey) {
+        setLiveStatus("topstepStatus", "Need credentials", "danger");
+        return;
+      }
+      setLiveStatus("topstepStatus", "Connecting", "warn");
+      try {
+        const response = await fetch(`${CONNECTOR_URL}/api/topstep/connect`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userName, apiKey })
+        });
+        const result = await response.json();
+        byId("topstepKey").value = "";
+        if (!result.success) throw new Error(result.error || "Topstep connection failed");
+        setLiveStatus("topstepStatus", "Connected", "good");
+      } catch (error) {
+        setLiveStatus("topstepStatus", "Error", "danger");
+        byId("consoleOutput").textContent = `TopstepX connection failed:\n${error.message || error}\n\nCheck that API access is active and the key is correct.`;
+      }
+    }
+
+    function setInputValue(id, value) {
+      const el = byId(id);
+      if (!el || value === null || value === undefined || value === "") return;
+      el.value = value;
+    }
+
+    function formatConnectorTime(value) {
+      if (!value) return "";
+      try {
+        return new Date(value).toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit", second: "2-digit" });
+      } catch {
+        return "";
+      }
+    }
+
+    function fmt(value) {
+      if (!Number.isFinite(value)) return "-";
+      return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function money(value) {
+      if (!Number.isFinite(value)) return "$-";
+      const sign = value < 0 ? "-" : "";
+      return `${sign}$${Math.abs(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    function points(value) {
+      if (!Number.isFinite(value)) return "-";
+      return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function riskMath() {
+      const action = deckState.action;
+      const spec = contractSpec();
+      const entry = numberValue("entry");
+      const stop = numberValue("stop");
+      const target1 = numberValue("target1");
+      const target2 = numberValue("target2");
+      if (!["LONG", "SHORT"].includes(action) || entry === null || stop === null) {
+        return { valid: false, spec };
+      }
+      const riskPts = Math.abs(entry - stop);
+      const target1Pts = target1 === null ? null : Math.abs(target1 - entry);
+      const target2Pts = target2 === null ? null : Math.abs(target2 - entry);
+      const directionValid = action === "LONG"
+        ? stop < entry && (target1 === null || target1 > entry) && (target2 === null || target2 > entry)
+        : stop > entry && (target1 === null || target1 < entry) && (target2 === null || target2 < entry);
+
+      const rr = riskPts > 0 && target2Pts !== null ? target2Pts / riskPts : null;
+      return {
+        valid: riskPts > 0,
+        directionValid,
+        riskPts,
+        target1Pts,
+        target2Pts,
+        rr,
+        spec,
+        microRisk: riskPts * spec.microPoint,
+        fullRisk: riskPts * spec.fullPoint,
+        microT1: target1Pts === null ? null : target1Pts * spec.microPoint,
+        fullT1: target1Pts === null ? null : target1Pts * spec.fullPoint,
+        microT2: target2Pts === null ? null : target2Pts * spec.microPoint,
+        fullT2: target2Pts === null ? null : target2Pts * spec.fullPoint
+      };
+    }
+
+    function updateMetrics() {
+      const math = riskMath();
+      const metrics = byId("riskMetrics");
+      const riskMetric = byId("riskMetric");
+      const rewardMetric = byId("rewardMetric");
+      const rrMetric = byId("rrMetric");
+
+      [riskMetric, rewardMetric, rrMetric].forEach(el => el.className = "metric");
+
+      if (!math.valid) {
+        metrics.dataset.mode = "empty";
+        byId("riskValue").textContent = "No active risk";
+        byId("rewardValue").textContent = "No active target";
+        byId("rrValue").textContent = deckState.action === "WAIT" ? "WAIT" : "-";
+        [riskMetric, rewardMetric, rrMetric].forEach(el => el.classList.add("warning"));
+        return;
+      }
+
+      metrics.dataset.mode = "active";
+      byId("riskValue").textContent = `${points(math.riskPts)} pts | ${math.spec.micro} ${money(math.microRisk)} / ${math.spec.full} ${money(math.fullRisk)}`;
+      byId("rewardValue").textContent = math.target2Pts === null
+        ? "-"
+        : `${points(math.target2Pts)} pts | ${math.spec.micro} ${money(math.microT2)} / ${math.spec.full} ${money(math.fullT2)}`;
+      byId("rrValue").textContent = math.rr ? `1:${math.rr.toFixed(2)}` : "-";
+
+      riskMetric.classList.add(math.microRisk > math.spec.riskDanger ? "danger" : math.microRisk > math.spec.riskWarn ? "warning" : "good");
+      rewardMetric.classList.add("good");
+      rrMetric.classList.add(math.rr >= 2 ? "good" : math.rr >= 1.2 ? "warning" : "danger");
+    }
+
+    function updateStatus() {
+      const required = ["price", "dayHigh", "dayLow", "vwap"];
+      const filled = required.filter(id => textValue(id, "")).length;
+      const hasSources = Boolean(textValue("sources", "").trim());
+      const dataStatus = byId("dataStatus");
+      dataStatus.className = "pill";
+      if (filled === required.length && hasSources) {
+        dataStatus.classList.add("good");
+        dataStatus.innerHTML = `<i data-lucide="database"></i><span>Data ready</span>`;
+      } else if (filled === required.length) {
+        dataStatus.classList.add("good");
+        dataStatus.innerHTML = `<i data-lucide="database"></i><span>Core ready</span>`;
+      } else if (filled >= 2) {
+        dataStatus.classList.add("warning");
+        dataStatus.innerHTML = `<i data-lucide="database"></i><span>Partial data</span>`;
+      } else {
+        dataStatus.classList.add("danger");
+        dataStatus.innerHTML = `<i data-lucide="database"></i><span>Needs data</span>`;
+      }
+
+      const aligned = steps.reduce((count, step) => {
+        const score = deckState.scores[step.id];
+        if (score === "PASS" || score === "BULLISH" || score === "BEARISH") return count + 1;
+        return count;
+      }, 0);
+      byId("scorePill").innerHTML = `<i data-lucide="gauge"></i><span>${aligned} / 5 aligned</span>`;
+
+      const riskChecked = document.querySelectorAll("[data-risk]:checked").length;
+      const math = riskMath();
+      const guardrail = byId("guardrail");
+      const currentSession = sessionLabel();
+      const spec = contractSpec();
+      const maxRisk = Math.max(0, numberValue("maxRiskDollars") || 0);
+      guardrail.className = "guardrail";
+
+      const warnings = [];
+      if (!hasSources) warnings.push("source URLs are missing");
+      if (deckState.action !== "WAIT" && currentSession === "Closed") warnings.push("market is closed");
+      if (deckState.action !== "WAIT" && textValue("eventRisk", "Clear") !== "Clear") warnings.push(textValue("eventRisk").toLowerCase());
+      if (deckState.action !== "WAIT" && textValue("holdPlan") === "Overnight paper hold planned") warnings.push("overnight hold is planned");
+      if (deckState.action !== "WAIT" && !math.valid) warnings.push("entry/stop are incomplete");
+      if (deckState.action !== "WAIT" && math.valid && !math.directionValid) warnings.push("targets or stop conflict with direction");
+      if (math.valid && math.microRisk > spec.riskDanger) warnings.push(`${spec.micro} risk is above the small-account practice band`);
+      if (math.valid && maxRisk > 0 && math.microRisk > maxRisk) warnings.push(`${spec.micro} risk exceeds the challenge max risk`);
+      if (riskChecked < 5) warnings.push("risk checklist is incomplete");
+      if (deckState.action !== "WAIT" && aligned < 3) warnings.push("scorecard evidence is thin");
+
+      if (warnings.length === 0 && deckState.action === "WAIT") {
+        guardrail.textContent = "WAIT mode active. Rerun the scan on schedule and do not force a trade.";
+      } else if (warnings.length === 0) {
+        guardrail.classList.add("good");
+        guardrail.textContent = "Deck complete for paper-trading review. Still verify live market data before acting.";
+      } else if (deckState.action !== "WAIT") {
+        guardrail.classList.add("danger");
+        guardrail.textContent = "Guardrail: " + warnings.join("; ") + ".";
+      } else {
+        guardrail.textContent = "WAIT is acceptable while " + warnings.join("; ") + ".";
+      }
+    }
+
+    function detectSession() {
+      const phase = marketPhase(new Date());
+      const session = phase.tradeable ? phase.session : "Closed";
+      let className = `pill ${phase.tone === "danger" ? "danger" : phase.tone === "good" ? "good" : "warning"}`;
+
+      const pill = byId("sessionPill");
+      pill.className = className;
+      pill.dataset.session = session;
+      pill.innerHTML = `<i data-lucide="clock-3"></i><span>${session}</span>`;
+      updateMarketHoursStrip(phase);
+      if (els.signalOutput) {
+        updateStatus();
+        buildSignal();
+        updateConsole();
+        if (window.lucide) window.lucide.createIcons();
+      }
+      if (lastConnectorSync) {
+        const seconds = Math.round((Date.now() - lastConnectorSync.getTime()) / 1000);
+        if (seconds > 20) setLiveStatus("connectorStatus", "Polling backup", "warn");
+      }
+      setTimeout(detectSession, 60000);
+    }
+
+    function marketPhase(date) {
+      const parts = etParts(date);
+      const day = parts.weekday;
+      const minutes = parts.minutes;
+      const isSaturday = day === "Sat";
+      const beforeSundayOpen = day === "Sun" && minutes < 18 * 60;
+      const afterFridayClose = day === "Fri" && minutes >= 17 * 60;
+      const maintenanceBreak = minutes >= 17 * 60 && minutes < 18 * 60;
+      const indexHalt = minutes >= 16 * 60 + 15 && minutes < 16 * 60 + 30 && !["Sat", "Sun"].includes(day);
+
+      if (isSaturday || beforeSundayOpen || afterFridayClose) {
+        return phaseState("Weekend closed", "Closed", false, "danger", "No futures trading.", day === "Sun" ? "Futures reopen 6:00 PM ET" : "Futures reopen Sunday 6:00 PM ET");
+      }
+      if (maintenanceBreak) {
+        return phaseState("Maintenance break", "Closed", false, "danger", "CME daily reset.", "Globex reopens 6:00 PM ET");
+      }
+      if (indexHalt) {
+        return phaseState("Index halt", "Closed", false, "danger", "Equity-index halt window.", "Trading resumes 4:30 PM ET");
+      }
+      if (minutes >= 9 * 60 + 30 && minutes < 11 * 60 + 30) {
+        return phaseState("RTH morning", "RTH", true, "good", "Cash session open.", "Lunch/chop watch 11:30 AM ET");
+      }
+      if (minutes >= 11 * 60 + 30 && minutes < 13 * 60 + 30) {
+        return phaseState("RTH lunch", "RTH", true, "warning", "Often slower/choppier.", "Afternoon session 1:30 PM ET");
+      }
+      if (minutes >= 13 * 60 + 30 && minutes < 15 * 60) {
+        return phaseState("RTH afternoon", "RTH", true, "good", "Cash session open.", "Power hour 3:00 PM ET");
+      }
+      if (minutes >= 15 * 60 && minutes < 16 * 60) {
+        return phaseState("Power hour", "RTH", true, "good", "Cash close approaching.", "Cash close 4:00 PM ET");
+      }
+      if (minutes >= 16 * 60 && minutes < 16 * 60 + 15) {
+        return phaseState("Post-cash futures", "Late Session", true, "warning", "Cash market closed.", "Index halt 4:15 PM ET");
+      }
+      if (minutes >= 16 * 60 + 30 && minutes < 17 * 60) {
+        return phaseState("Late futures", "Late Session", true, "warning", "Thin before reset.", "Maintenance 5:00 PM ET");
+      }
+      if (minutes >= 6 * 60 && minutes < 9 * 60 + 30) {
+        return phaseState("Pre-market", "Pre-Market", true, "warning", "Futures open before cash.", "Cash/RTH open 9:30 AM ET");
+      }
+      return phaseState("Overnight Globex", "ETH-Globex", true, "warning", "Futures open; liquidity varies.", minutes < 6 * 60 ? "Pre-market 6:00 AM ET" : "Cash/RTH open 9:30 AM ET");
+    }
+
+    function phaseState(name, session, tradeable, tone, detail, next) {
+      return { name, session, tradeable, tone, detail, next };
+    }
+
+    function etParts(date) {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).formatToParts(date).reduce((acc, part) => {
+        acc[part.type] = part.value;
+        return acc;
+      }, {});
+      const hour = Number(parts.hour) % 24;
+      return {
+        weekday: parts.weekday,
+        hour,
+        minute: Number(parts.minute),
+        minutes: hour * 60 + Number(parts.minute)
+      };
+    }
+
+    function updateMarketHoursStrip(phase) {
+      const nowCard = byId("hoursNowCard");
+      const nextCard = byId("hoursNextCard");
+      if (!nowCard || !nextCard) return;
+      nowCard.className = `hours-card ${phase.tone}`;
+      nextCard.className = "hours-card neutral";
+      setText("hoursNow", phase.name);
+      setText("hoursNowSub", `${phase.tradeable ? "Live" : "Closed"} - ${phase.detail}`);
+      setText("hoursNext", phase.next);
+      setText("hoursNextSub", "ET, normal non-holiday schedule");
+    }
+
+    function sessionLabel() {
+      return byId("sessionPill").dataset.session || "Unknown";
+    }
+
+    function drawLadder() {
+      const canvas = byId("ladderCanvas");
+      const container = canvas.parentElement;
+      const dpr = window.devicePixelRatio || 1;
+      const width = container.clientWidth || 900;
+      const height = container.clientHeight || 260;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = width + "px";
+      canvas.style.height = height + "px";
+      const ctx = canvas.getContext("2d");
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, width, height);
+
+      ctx.fillStyle = "#0c0b13";
+      ctx.fillRect(0, 0, width, height);
+
+      const activeTrade = ["LONG", "SHORT"].includes(deckState.action);
+      const levels = [
+        { label: "Price", value: numberValue("price"), color: "#f9f4fb", width: 3 },
+        { label: "VWAP", value: numberValue("vwap"), color: "#ff6fb5", width: 2 }
+      ];
+      if (activeTrade) {
+        levels.push(
+          { label: "Entry", value: numberValue("entry"), color: "#28d7d9", width: 2 },
+          { label: "Stop", value: numberValue("stop"), color: "#ff5c78", width: 2 },
+          { label: "T1", value: numberValue("target1"), color: "#35d07f", width: 2 },
+          { label: "T2", value: numberValue("target2"), color: "#35d07f", width: 2 }
+        );
+      } else {
+        levels.push(
+          { label: "High", value: numberValue("dayHigh"), color: "#35d07f", width: 1, dash: true },
+          { label: "Low", value: numberValue("dayLow"), color: "#ff5c78", width: 1, dash: true }
+        );
+      }
+
+      const visibleLevels = levels.filter(level => level.value !== null);
+      const values = visibleLevels.map(level => level.value);
+
+      if (!values.length) {
+        ctx.fillStyle = "#b9a6c5";
+        ctx.font = "700 14px Inter, sans-serif";
+        const spec = contractSpec();
+        ctx.fillText(`Add prices to draw the ${spec.micro}/${spec.full} ladder.`, 24, 38);
+        drawGrid(ctx, width, height);
+        return;
+      }
+
+      let min = Math.min(...values);
+      let max = Math.max(...values);
+      if (min === max) {
+        min -= 10;
+        max += 10;
+      }
+      const pad = Math.max((max - min) * 0.18, 12);
+      const yFor = value => {
+        const range = (max + pad) - (min - pad);
+        return height - 22 - ((value - (min - pad)) / range) * (height - 48);
+      };
+
+      drawGrid(ctx, width, height);
+
+      const legendWidth = width < 620 ? 156 : 196;
+      const plotRight = Math.max(width - legendWidth - 26, Math.floor(width * 0.58));
+      const legendX = plotRight + 14;
+      const legendY = 14;
+      const rowHeight = width < 620 ? 18 : 21;
+      const legendHeight = 30 + visibleLevels.length * rowHeight;
+
+      const dayHigh = numberValue("dayHigh");
+      const dayLow = numberValue("dayLow");
+      if (dayHigh !== null && dayLow !== null && dayHigh !== dayLow) {
+        const top = Math.min(yFor(dayHigh), yFor(dayLow));
+        const bottom = Math.max(yFor(dayHigh), yFor(dayLow));
+        ctx.fillStyle = "rgba(40, 215, 217, .10)";
+        ctx.fillRect(16, top, Math.max(20, plotRight - 18), Math.max(3, bottom - top));
+      }
+
+      visibleLevels.forEach(level => {
+        const y = yFor(level.value);
+        ctx.beginPath();
+        ctx.strokeStyle = level.color;
+        ctx.lineWidth = level.width;
+        ctx.setLineDash(level.dash ? [5, 5] : []);
+        ctx.moveTo(16, y);
+        ctx.lineTo(plotRight, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(plotRight, y, level.label === "Price" ? 4 : 3, 0, Math.PI * 2);
+        ctx.fillStyle = "#0c0b13";
+        ctx.fill();
+        ctx.strokeStyle = level.color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+
+      ctx.fillStyle = "rgba(20, 17, 29, .96)";
+      ctx.fillRect(legendX, legendY, legendWidth - 8, Math.min(height - 26, legendHeight));
+      ctx.strokeStyle = "#34243c";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(legendX, legendY, legendWidth - 8, Math.min(height - 26, legendHeight));
+      ctx.fillStyle = "#b9a6c5";
+      ctx.font = "900 10px Inter, sans-serif";
+      ctx.fillText(activeTrade ? `${deckState.action} PLAN` : "WAIT CONTEXT", legendX + 10, legendY + 17);
+
+      visibleLevels.forEach((level, index) => {
+        const rowY = legendY + 38 + index * rowHeight;
+        if (rowY > height - 12) return;
+        ctx.beginPath();
+        ctx.arc(legendX + 10, rowY - 4, 4, 0, Math.PI * 2);
+        ctx.fillStyle = level.color;
+        ctx.fill();
+        ctx.font = "850 10px Inter, sans-serif";
+        ctx.fillStyle = "#f9f4fb";
+        ctx.fillText(level.label, legendX + 22, rowY);
+        ctx.font = "900 11px Inter, sans-serif";
+        ctx.fillStyle = level.color;
+        ctx.textAlign = "right";
+        ctx.fillText(fmt(level.value), legendX + legendWidth - 18, rowY);
+        ctx.textAlign = "left";
+      });
+    }
+
+    function drawGrid(ctx, width, height) {
+      ctx.strokeStyle = "#241a2b";
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 5; i += 1) {
+        const y = (height / 5) * i;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#0c0b13";
+      ctx.fillRect(0, 0, width, 1);
+    }
+
+    function stepReason(id) {
+      return textValue(`${id}Reason`, "No evidence entered.");
+    }
+
+    function normalized(value) {
+      return String(value || "-").toUpperCase();
+    }
+
+    function setText(id, value) {
+      const el = byId(id);
+      if (el) el.textContent = value;
+    }
+
+    function shortText(value, fallback, max = 150) {
+      const text = String(value || "").replace(/\s+/g, " ").trim();
+      if (!text) return fallback;
+      return text.length > max ? `${text.slice(0, max - 1)}...` : text;
+    }
+
+    function updateSignalBrief(math) {
+      const action = deckState.action;
+      const spec = contractSpec();
+      const waitMode = action === "WAIT";
+      const price = numberValue("price");
+      const entry = numberValue("entry");
+      const stop = numberValue("stop");
+      const target1 = numberValue("target1");
+      const target2 = numberValue("target2");
+      const actionCard = byId("briefActionCard");
+      if (actionCard) actionCard.className = `brief-card action ${action.toLowerCase()}`;
+
+      const activeRisk = math.valid
+        ? `${points(math.riskPts)} pts | ${spec.micro} -${money(math.microRisk)}`
+        : "Risk not calculated";
+      const targetText = waitMode
+        ? "No active risk"
+        : `${fmt(target1)} / ${fmt(target2)} | ${activeRisk}`;
+      const entryStopText = waitMode
+        ? "No active entry"
+        : `${fmt(entry)} / ${fmt(stop)}`;
+      const note = waitMode
+        ? shortText(textValue("reasoning"), "No entry recommended yet. Keep watching for a cleaner setup.", 170)
+        : shortText(textValue("reasoning"), "Directional signal entered. Confirm the plan, source data, and risk rules before logging a paper trade.", 170);
+
+      setText("briefAction", action);
+      setText("briefConfidence", `${deckState.confidence} confidence`);
+      setText("briefMarket", `${spec.micro}/${spec.full} primary`);
+      setText("briefPrice", fmt(price));
+      setText("briefEntryStop", entryStopText);
+      setText("briefTargetsRisk", targetText);
+      setText("briefContext", `${backupSpecName()} - ${textValue("eventRisk", "Clear")}`);
+      setText("briefNextCheck", textValue("nextCheck", textValue("reviewTime", "-")));
+      setText("briefNote", note);
+      setText("briefSubtitle", `${sessionLabel()} - ${textValue("holdPlan", "Intraday only")}`);
+    }
+
+    function buildSignal() {
+      const math = riskMath();
+      const action = deckState.action;
+      const spec = contractSpec();
+      const output = [];
+      const session = sessionLabel();
+      const price = numberValue("price");
+      const waitMode = action === "WAIT";
+      const stopRisk = math.valid ? `${points(math.riskPts)} pts risk = ${spec.micro} -${money(math.microRisk)} / ${spec.full} -${money(math.fullRisk)}` : "risk not calculated";
+      const t1Reward = math.valid && math.target1Pts !== null ? `${points(math.target1Pts)} pts gain = ${spec.micro} +${money(math.microT1)} / ${spec.full} +${money(math.fullT1)}` : "target not calculated";
+      const t2Reward = math.valid && math.target2Pts !== null ? `${points(math.target2Pts)} pts gain = ${spec.micro} +${money(math.microT2)} / ${spec.full} +${money(math.fullT2)}` : "target not calculated";
+      const rr = math.rr ? `1:${math.rr.toFixed(2)}` : "-";
+      const exitLines = textValue("exitTriggers", "-").split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      const sources = textValue("sources", "-").split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+
+      output.push("============================================================");
+      output.push(spec.title);
+      output.push("============================================================");
+      output.push(`ACTION: ${action}`);
+      output.push(`${spec.micro} PRICE: ${fmt(price)}`);
+      output.push(`PRIMARY MARKET: ${textValue("marketMode", "MNQ/NQ")}`);
+      output.push(`BACKUP MARKET: ${backupSpecName()}`);
+      output.push(`SESSION: ${session}`);
+      output.push(`CONFIDENCE: ${deckState.confidence}`);
+      output.push(`EVENT RISK: ${textValue("eventRisk", "Clear")}`);
+      output.push(`HOLDING PLAN: ${textValue("holdPlan", "Intraday only")}`);
+      output.push("");
+      output.push("PAPER TRADING ONLY. This is not financial advice.");
+      output.push("");
+      output.push("PAPER CHALLENGE");
+      output.push(`  Start Balance:   ${money(numberValue("accountStart") || 5)}`);
+      output.push(`  Current Balance: ${money(numberValue("accountBalance") || numberValue("accountStart") || 5)}`);
+      output.push(`  Max Risk:        ${money(numberValue("maxRiskDollars") || 20)}`);
+      output.push(`  Last Result:     ${textValue("lastTradeResult", "none logged")}`);
+      output.push(`  Last Check:      ${textValue("lastCheck", textValue("reviewTime", "-"))}`);
+      output.push(`  Next Check:      ${textValue("nextCheck", "-")}`);
+      output.push("");
+      output.push("ENTRY PLAN");
+      if (waitMode) {
+        output.push("  Entry:    No entry recommended.");
+        output.push("  Stop:     Not active.");
+        output.push("  Target 1: Not active.");
+        output.push("  Target 2: Not active.");
+        output.push("  Risk/Reward: -");
+      } else {
+        output.push(`  Entry:    ${fmt(numberValue("entry"))}`);
+        output.push(`  Stop:     ${fmt(numberValue("stop"))} (${stopRisk})`);
+        output.push(`  Target 1: ${fmt(numberValue("target1"))} (${t1Reward})`);
+        output.push(`  Target 2: ${fmt(numberValue("target2"))} (${t2Reward})`);
+        output.push(`  Risk/Reward: ${rr}`);
+      }
+      output.push("");
+      output.push("KEY LEVELS");
+      output.push(`  Overnight High:  ${fmt(numberValue("onHigh"))}`);
+      output.push(`  Overnight Low:   ${fmt(numberValue("onLow"))}`);
+      output.push(`  Prior Day High:  ${fmt(numberValue("pdh"))}`);
+      output.push(`  Prior Day Low:   ${fmt(numberValue("pdl"))}`);
+      output.push(`  Prior Day Close: ${fmt(numberValue("pdc"))}`);
+      output.push(`  VWAP:            ${fmt(numberValue("vwap"))}`);
+      output.push(`  Opening Range:   ${fmt(numberValue("orLow"))} - ${fmt(numberValue("orHigh"))}`);
+      output.push(`  Major Round #:   ${fmt(numberValue("majorRound"))}`);
+      output.push(`  Gap:             ${textValue("gapNote")}`);
+      output.push(`  Volume:          ${textValue("volumeTone")}`);
+      output.push("");
+      output.push(spec.confirmation);
+      output.push(`  QQQ Direction:       ${normalized(textValue("qqqDirection"))}`);
+      output.push(`  Mega-Cap Leaders:    ${normalized(textValue("megaCap"))}`);
+      output.push(`  Semiconductor Tone:  ${normalized(textValue("semiTone"))}`);
+      output.push(`  Yields Impact:       ${normalized(textValue("yieldImpact"))}`);
+      output.push(`  Volatility:          ${normalized(textValue("volatility"))}`);
+      output.push(`  Backup Bias:         ${normalized(textValue("backupBias"))}`);
+      output.push(`  Backup Quality:      ${normalized(textValue("backupQuality"))}`);
+      output.push(`  Backup Notes:        ${textValue("backupNotes", "No backup notes entered.")}`);
+      output.push("");
+      output.push("SCORECARD");
+      steps.forEach(step => {
+        const score = deckState.scores[step.id] || "NEUTRAL";
+        output.push(`  ${step.title.padEnd(17, " ")} ${score} - ${stepReason(step.id)}`);
+      });
+      output.push("");
+      output.push("REASONING");
+      output.push(`  ${textValue("reasoning", "No reasoning entered.")}`);
+      output.push("");
+      output.push("EXIT TRIGGERS");
+      if (exitLines.length) {
+        exitLines.forEach(line => output.push(`  - ${line}`));
+      } else {
+        output.push("  - No exit triggers entered.");
+      }
+      output.push("");
+      output.push("RISK MANAGEMENT RULES");
+      output.push(`  - Max risk per ${spec.micro} paper trade should stay under the deck's max-risk input unless the signal is WAIT.`);
+      output.push(`  - Position size: 1 ${spec.micro} contract for small-account practice.`);
+      output.push(`  - Do not use full-size ${spec.full} until the strategy is consistently profitable in ${spec.micro} and the paper account can absorb full-size volatility.`);
+      output.push("  - Max trades per day: 3. If there is no clean setup, WAIT.");
+      output.push("  - If 2 consecutive losers or one challenge failure happens: stop trading for the session.");
+      output.push("  - Never widen a stop after entry.");
+      output.push("  - Do not hold through CPI, FOMC, NFP, major Fed speakers, or mega-cap earnings that can gap futures sharply.");
+      output.push("");
+      output.push("NEWS IMPACT");
+      output.push(`  ${textValue("newsImpact", "No news impact entered.")}`);
+      output.push("  Sentiment: " + (deckState.scores.macro || "NEUTRAL"));
+      output.push("");
+      output.push("SOURCES");
+      if (sources.length) {
+        sources.forEach(source => output.push(`  - ${source}`));
+      } else {
+        output.push("  - No source URLs entered.");
+      }
+      output.push("============================================================");
+      output.push("");
+      output.push("RISK DISCLAIMER: This is a paper trading exercise for educational purposes only. Past patterns do not guarantee future results. Futures are leveraged and carry substantial risk. Never risk money you cannot afford to lose. This is not financial advice.");
+
+      els.signalOutput.value = output.join("\n");
+      updateSignalBrief(math);
+    }
+
+    async function copySignal() {
+      try {
+        await navigator.clipboard.writeText(els.signalOutput.value);
+        flashButton(byId("copySignal"), "Copied");
+      } catch (error) {
+        els.signalOutput.select();
+        document.execCommand("copy");
+        flashButton(byId("copySignal"), "Copied");
+      }
+    }
+
+    function flashButton(button, label) {
+      const original = button.innerHTML;
+      button.innerHTML = `<i data-lucide="check"></i><span>${label}</span>`;
+      if (window.lucide) window.lucide.createIcons();
+      setTimeout(() => {
+        button.innerHTML = original;
+        if (window.lucide) window.lucide.createIcons();
+      }, 1200);
+    }
+
+    function downloadSignal() {
+      const blob = new Blob([els.signalOutput.value], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+      a.href = URL.createObjectURL(blob);
+      a.download = `mnq-nq-signal-${stamp}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function resetDeck() {
+      const confirmed = confirm("Reset the Signal Deck?");
+      if (!confirmed) return;
+      localStorage.removeItem(STORAGE_KEY);
+      document.querySelectorAll("[data-save]").forEach(el => {
+        if (el.type === "checkbox") el.checked = false;
+        else if (el.tagName === "SELECT") el.selectedIndex = 0;
+        else el.value = "";
+      });
+      deckState = { action: "WAIT", confidence: "LOW", executionContract: "MNQ", logs: [], scores: {} };
+      steps.forEach(step => deckState.scores[step.id] = step.macro ? "NEUTRAL" : "NEUTRAL");
+      applyDefaultValues();
+      stampInitialTime();
+      updateAll();
+    }
+
+    init();
+  </script>
+</body>
+</html>
